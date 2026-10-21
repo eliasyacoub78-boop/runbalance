@@ -79,6 +79,146 @@ label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px}input,selec
 <div class="card"><h2>Löpning inne eller ute</h2><div class="session"><div class="day">INNE</div><div><h3>Löpband</h3><p>Platt eller minimal lutning, lugn fart och nära till stoppknappen.</p></div></div><div class="session"><div class="day">UTE</div><div><h3>Utomhus</h3><p>Kort slinga och jämnt underlag. Undvik backar och fartlek i början.</p></div></div><div class="session"><div class="day">CYKEL</div><div><h3>Inomhuscykel</h3><p>Lätt motstånd och jämn kadens. Avbryt om knät reagerar.</p></div></div></div>
 <div class="card"><h2>Vägen mot maraton</h2><p class="muted">Först stabila korta löppass utan återkommande knäreaktioner, sedan gradvis mer löptid, längre lugna pass och till sist maratonspecifik träning. Det kräver sannolikt flera månaders stabil träning – inte en snabb fyraveckorsökning.</p><button onclick="showPage('log')">Logga dagens pass</button></div>
 </section>
+<div class="card">
+  <h2>Mitt 8-veckorsschema</h2>
+  <p class="muted">Mål: springa 5 km snabbare. Markera passen när du är klar.</p>
+
+  <label for="weekSelect">Välj vecka</label>
+  <select id="weekSelect" onchange="renderWeeklyPlan()">
+    <option value="0">Vecka 1 – Grund</option>
+    <option value="1">Vecka 2 – Rytm</option>
+    <option value="2">Vecka 3 – Uthållighet</option>
+    <option value="3">Vecka 4 – Återhämtning</option>
+    <option value="4">Vecka 5 – Fartuthållighet</option>
+    <option value="5">Vecka 6 – Intervaller</option>
+    <option value="6">Vecka 7 – Förberedelse</option>
+    <option value="7">Vecka 8 – 5 km-test</option>
+  </select>
+
+  <div id="weeklyProgress" class="notice" style="margin-top:12px"></div>
+  <div id="weeklySessions"></div>
+</div>
+
+<script>
+const weeklyPlans = [
+[
+["Tisdag","Lugn löpning","4 km i prattempo."],
+["Onsdag","Vila","Återhämtning."],
+["Torsdag","Intervaller","6 × 1 minut snabbt, 2 minuter lugnt mellan."],
+["Fredag","Styrka","2 varv: 10 knäböj, 12 höftlyft, 15 tåhävningar och 30 sekunder planka."],
+["Lördag","Lugn löpning","3 km mycket lugnt."],
+["Söndag","Långpass","5 km i prattempo."],
+["Måndag","Vila","Hel vilodag."]
+],
+[
+["Tisdag","Lugn löpning","4 km + 4 × 20 sekunder avslappnade stegringslopp."],
+["Onsdag","Vila","Återhämtning."],
+["Torsdag","Intervaller","8 × 1 minut snabbt, 90 sekunder lugnt mellan."],
+["Fredag","Styrka","2 varv: knäböj, höftlyft, tåhävningar och planka."],
+["Lördag","Lugn löpning","3–4 km i prattempo."],
+["Söndag","Långpass","5,5 km lugnt."],
+["Måndag","Vila","Hel vilodag."]
+],
+[
+["Tisdag","Lugn löpning","4–5 km lugnt."],
+["Onsdag","Vila","Återhämtning."],
+["Torsdag","Tempointervaller","3 × 5 minuter kontrollerat tempo, 2 minuter lugnt mellan."],
+["Fredag","Styrka","20 minuter: knäböj, höftlyft, tåhävningar och planka."],
+["Lördag","Återhämtning","3 km mycket lugnt."],
+["Söndag","Långpass","6 km lugnt."],
+["Måndag","Vila","Hel vilodag."]
+],
+[
+["Tisdag","Lugn löpning","4 km + 4 × 20 sekunder stegringslopp."],
+["Onsdag","Vila","Återhämtning."],
+["Torsdag","Intervaller","5 × 400 meter snabbt men kontrollerat, 200 meter lugn jogg mellan."],
+["Fredag","Lätt styrka","15 minuter, utan tunga lyft."],
+["Lördag","Återhämtning","3 km lugnt."],
+["Söndag","Lugn löpning","5 km lugnt."],
+["Måndag","Vila","Hel vilodag."]
+],
+[
+["Tisdag","Lugn löpning","5 km i prattempo."],
+["Onsdag","Vila","Återhämtning."],
+["Torsdag","Tempointervaller","4 × 4 minuter kontrollerat tempo, 2 minuter lugnt mellan."],
+["Fredag","Styrka","20 minuter helkropp."],
+["Lördag","Återhämtning","3–4 km lugnt."],
+["Söndag","Långpass","6,5 km lugnt."],
+["Måndag","Vila","Hel vilodag."]
+],
+[
+["Tisdag","Lugn löpning","4–5 km + 4 stegringslopp."],
+["Onsdag","Vila","Återhämtning."],
+["Torsdag","Intervaller","6 × 400 meter snabbt men kontrollerat, 200 meter jogg mellan."],
+["Fredag","Lätt styrka","15 minuter."],
+["Lördag","Återhämtning","3 km lugnt."],
+["Söndag","Lugn löpning","6 km lugnt."],
+["Måndag","Vila","Hel vilodag."]
+],
+[
+["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],
+["Onsdag","Vila","Återhämtning."],
+["Torsdag","Tempointervaller","3 × 6 minuter kontrollerat tempo, 2 minuter lugnt mellan."],
+["Fredag","Lätt styrka","10–15 minuter."],
+["Lördag","Återhämtning","3 km lugnt."],
+["Söndag","Lugn löpning","5 km lugnt."],
+["Måndag","Vila","Hel vilodag."]
+],
+[
+["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],
+["Onsdag","Vila","Återhämtning."],
+["Torsdag","Korta intervaller","4 × 1 minut snabbt, 2 minuter lugnt mellan."],
+["Fredag","Vila","Ingen styrketräning."],
+["Lördag","Lätt jogg","15–20 minuter mycket lugnt."],
+["Söndag","5 km-test","Värm upp 10–15 minuter, spring 5 km och börja kontrollerat. Avsluta med lugn jogg eller gång."],
+["Måndag","Vila","Notera sluttiden och hur det kändes."]
+]
+];
+
+function renderWeeklyPlan() {
+  const week = Number(document.getElementById("weekSelect").value);
+  let done = {};
+  try {
+    done = JSON.parse(localStorage.getItem("rb_weekly_done") || "{}");
+  } catch (e) {}
+
+  const sessions = weeklyPlans[week];
+  const prefix = "w" + week + "-";
+
+  document.getElementById("weeklySessions").innerHTML =
+    sessions.map((s, i) => {
+      const id = prefix + i;
+      return `<div class="session">
+        <div style="flex:1">
+          <h3>${s[0]} · ${s[1]}</h3>
+          <p>${s[2]}</p>
+          <label style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" style="width:auto"
+              ${done[id] ? "checked" : ""}
+              onchange="toggleWeeklyDone('${id}',this.checked)">
+            Pass genomfört
+          </label>
+        </div>
+      </div>`;
+    }).join("");
+
+  const completed = sessions.filter((s, i) => done[prefix + i]).length;
+  document.getElementById("weeklyProgress").textContent =
+    `Vecka ${week + 1}: ${completed} av ${sessions.length} dagar avklarade`;
+}
+
+function toggleWeeklyDone(id, checked) {
+  let done = {};
+  try {
+    done = JSON.parse(localStorage.getItem("rb_weekly_done") || "{}");
+  } catch (e) {}
+  done[id] = checked;
+  localStorage.setItem("rb_weekly_done", JSON.stringify(done));
+  renderWeeklyPlan();
+}
+
+renderWeeklyPlan();
+</script>
 
 <section id="log" class="page">
  <div class="card">
