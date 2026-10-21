@@ -37,7 +37,7 @@ label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px}input,selec
  </div>
  <div class="card">
   <h2>Din plan just nu <span class="pill">Återstart</span></h2>
-  <p class="muted">Din Strava-historik visar en starkare löparperiod 2023, därefter ett långt avbrott. Planen nedan är en försiktig start och ska anpassas efter hur knät reagerar.</p>
+  <p class="muted">En försiktig start efter ett löpuppehåll. Anpassa planen efter hur kroppen och knät reagerar.</p>
   <div class="notice">Börja bara med joggintervaller om vanlig gång och vardagsaktiviteter är symtomfria och du inte redan vet att joggning provocerar knät.</div>
  </div>
  <div class="card">
@@ -49,6 +49,7 @@ label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px}input,selec
  </div>
  <div class="card"><h2>Regeln för progression</h2><p class="muted">Upprepa samma nivå innan du ökar. Om smärtan ökar under passet, påverkar löpsteget eller är tydligt värre nästa dag: avstå från nästa löppass och backa belastningen. Återkommande besvär bör bedömas av fysioterapeut.</p></div>
 </section>
+
 <section id="plan" class="page">
 <div class="card"><h2>Ditt träningsprogram</h2><p class="muted">En försiktig start mot maraton. Upprepa veckor vid behov; öka bara när knät känns stabilt under passet och dagen efter.</p><div class="notice">Om smärtan ökar, påverkar löpsteget eller är tydligt värre dagen efter: avstå löpning och backa belastningen. Vid återkommande besvär, kontakta fysioterapeut.</div></div>
 <div class="card"><h2>Veckorytm</h2>
@@ -76,10 +77,13 @@ label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px}input,selec
 <div class="session"><div class="day">2 SET</div><div><h3>Sidosteg med miniband</h3><p>8–10 steg åt varje håll.</p></div></div>
 <div class="session"><div class="day">2 SET</div><div><h3>Sidoplanka på knä</h3><p>15–25 sekunder per sida.</p></div></div></div>
 <div class="card"><h2>Löpning inne eller ute</h2><div class="session"><div class="day">INNE</div><div><h3>Löpband</h3><p>Platt eller minimal lutning, lugn fart och nära till stoppknappen.</p></div></div><div class="session"><div class="day">UTE</div><div><h3>Utomhus</h3><p>Kort slinga och jämnt underlag. Undvik backar och fartlek i början.</p></div></div><div class="session"><div class="day">CYKEL</div><div><h3>Inomhuscykel</h3><p>Lätt motstånd och jämn kadens. Avbryt om knät reagerar.</p></div></div></div>
-<div class="card"><h2>Vägen mot maraton</h2><p class="muted">Först stabila korta löppass utan återkommande knäreaktioner, sedan gradvis mer löptid, längre lugna pass och till sist maratonspecifik träning. Det kräver sannolikt flera månaders stabil träning – inte en snabb fyraveckorsökning.</p><button onclick="showPage('log')">Logga dagens pass</button></div></section>\n<section id="log" class="page">
+<div class="card"><h2>Vägen mot maraton</h2><p class="muted">Först stabila korta löppass utan återkommande knäreaktioner, sedan gradvis mer löptid, längre lugna pass och till sist maratonspecifik träning. Det kräver sannolikt flera månaders stabil träning – inte en snabb fyraveckorsökning.</p><button onclick="showPage('log')">Logga dagens pass</button></div>
+</section>
+
+<section id="log" class="page">
  <div class="card">
   <h2>Träningsdagbok</h2>
-  <p class="muted">Spara pass lokalt på den här enheten. Ingen automatisk Strava-synk finns i den här versionen.</p>
+  <p class="muted">Dina manuella träningspass sparas lokalt på den här enheten.</p>
   <form id="runForm">
    <label for="date">Datum</label><input id="date" type="date" required>
    <label for="kind">Aktivitet</label><select id="kind"><option>Löpning/gång-intervaller</option><option>Lugn löpning</option><option>Promenad</option><option>Styrka</option><option>Vila</option><option>Annat</option></select>
@@ -92,14 +96,18 @@ label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px}input,selec
    <button type="submit" style="width:100%;margin-top:14px">Spara i träningsdagboken</button>
   </form>
  </div>
+
  <div class="card">
   <h2>Strava-pass</h2>
-  <div id="stravaLogs">
-    <p class="muted">Hämtar Strava-pass…</p>
-  </div>
-</div>
+  <p class="muted">Datum, distans och träningstid från Strava. GPS-rutter visas inte.</p>
+  <button class="secondary" type="button" onclick="renderStravaLogs()">Uppdatera Strava-pass</button>
+  <div id="stravaStatus" class="muted" style="margin-top:10px">Hämtar Strava-pass…</div>
+  <div id="stravaLogs"><p class="muted">Hämtar Strava-pass…</p></div>
+ </div>
+
  <div class="card"><h2>Tidigare loggar</h2><div id="logs"><p class="muted">Inga pass loggade ännu.</p></div><button class="secondary" onclick="exportLogs()">Exportera logg som JSON</button></div>
 </section>
+
 <section id="recovery" class="page">
  <div class="card">
   <h2>Återhämtningslogg</h2><p class="muted">En enkel dagscheck som hjälper dig upptäcka mönster. Det är inte en medicinsk bedömning.</p>
@@ -117,62 +125,130 @@ label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px}input,selec
  <div class="notice danger">Om knäsmärtan ökar, påverkar gången/löpsteget eller finns kvar i vardagen: pausa löpningen och sök professionell bedömning.</div>
 </section>
 </main>
-<nav class="tabs" style="grid-template-columns:repeat(4,1fr)"><button class="active" data-page="home" onclick="showPage('home')">Översikt</button><button data-page="plan" onclick="showPage('plan')">Program</button><button data-page="log" onclick="showPage('log')">Träning</button><button data-page="recovery" onclick="showPage('recovery')">Återhämtning</button></nav>
-<div class="footer">RunBalance • Din logg sparas lokalt i webbläsaren på den här enheten.</div>
+<nav class="tabs" style="grid-template-columns:repeat(4,1fr)">
+<button class="active" data-page="home" onclick="showPage('home')">Översikt</button>
+<button data-page="plan" onclick="showPage('plan')">Program</button>
+<button data-page="log" onclick="showPage('log')">Träning</button>
+<button data-page="recovery" onclick="showPage('recovery')">Återhämtning</button>
+</nav>
+<div class="footer">RunBalance • Manuella loggar sparas lokalt i webbläsaren på den här enheten.</div>
+
 <script>
 const $=id=>document.getElementById(id);
-const read=(key)=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}};
+const read=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}};
 const write=(key,data)=>localStorage.setItem(key,JSON.stringify(data));
 const today=()=>new Date().toLocaleDateString('sv-SE');
-$('date').value=today(); $('rdate').value=today();
-function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));window.scrollTo({top:0,behavior:'smooth'});if(page==='log')renderLogs();if(page==='recovery')renderRecovery()}
-async function renderStravaLogs() {
-  const el = $('stravaLogs');
-  if (!el) return;
+$('date').value=today();
+$('rdate').value=today();
 
-  try {
-    const response = await fetch(
-      'https://runbalance-api.eliasyacoub78.workers.dev/strava/activities'
-    );
-
-    if (!response.ok) throw new Error('Strava kunde inte hämtas');
-
-    const data = await response.json();
-    const activities = data.activities || [];
-
-    el.innerHTML = activities.length
-      ? activities.map(x => {
-          const date = x.start_date
-            ? new Date(x.start_date).toLocaleDateString('sv-SE')
-            : 'Okänt datum';
-          const km = (Number(x.distance_m) || 0) / 1000;
-          const mins = Math.floor((Number(x.moving_time_s) || 0) / 60);
-          const duration = mins >= 60
-            ? `${Math.floor(mins / 60)} h ${mins % 60} min`
-            : `${mins} min`;
-
-          return `<div class="logitem">
-            <strong>${esc(date)} · ${esc(x.name || x.sport_type || 'Strava-pass')}</strong>
-            <p>${km.toFixed(2)} km · ${duration}</p>
-          </div>`;
-        }).join('')
-      : '<p class="muted">Inga Strava-pass hittades.</p>';
-  } catch (error) {
-    el.innerHTML =
-      '<p class="muted">Kunde inte hämta Strava-pass. Kontrollera att Worker-versionen är publicerad.</p>';
-  }
+function esc(v){
+ return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function renderLogs(){let data=read('rb_runs');$('metricRuns').textContent=data.length;const last=data[0];$('metricKnee').textContent=last?(last.nextday||'Loggad'):'Ej loggad';$('logs').innerHTML=data.length?data.map((x,i)=>`<div class="logitem"><strong>${esc(x.date)} · ${esc(x.kind)}</strong><p>${esc(x.minutes||'—')} min · ${esc(x.distance||'—')} km</p><p>Knä under pass: ${esc(x.during)} · Dagen efter: ${esc(x.nextday)}</p><p>Dagsform: ${esc(x.fatigue)}${x.notes?' · '+esc(x.notes):''}</p><button class="secondary" onclick="deleteRun(${i})">Ta bort</button></div>`).join(''):'<p class="muted">Inga pass loggade ännu.</p>'}
-function renderRecovery(){const data=read('rb_recovery');$('recoveryLogs').innerHTML=data.length?data.map((x,i)=>`<div class="logitem"><strong>${esc(x.date)} · ${esc(x.kneeToday)}</strong><p>Energi: ${esc(x.energy)} · Sömn: ${esc(x.sleepQuality)} · Ömhet: ${esc(x.soreness)}</p><p>${esc(x.notes||'')}</p><button class="secondary" onclick="deleteRecovery(${i})">Ta bort</button></div>`).join(''):'<p class="muted">Inga återhämtningsdagar loggade ännu.</p>'}
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-$('runForm').addEventListener('submit',e=>{e.preventDefault();const data=read('rb_runs');data.unshift({date:$('date').value,kind:$('kind').value,minutes:$('minutes').value,distance:$('distance').value,during:$('during').value,nextday:$('nextday').value,fatigue:$('fatigue').value,sleep:$('sleep').value,notes:$('notes').value});write('rb_runs',data);$('runForm').reset();$('date').value=today();renderLogs();alert('Passet är sparat på den här enheten.');});
-$('recoveryForm').addEventListener('submit',e=>{e.preventDefault();const data=read('rb_recovery');data.unshift({date:$('rdate').value,kneeToday:$('kneeToday').value,energy:$('energy').value,sleepQuality:$('sleepQuality').value,soreness:$('soreness').value,notes:$('recoveryNotes').value});write('rb_recovery',data);$('recoveryForm').reset();$('rdate').value=today();renderRecovery();alert('Återhämtningen är sparad på den här enheten.');});
-function deleteRun(i){const d=read('rb_runs');d.splice(i,1);write('rb_runs',d);renderLogs()}
-function deleteRecovery(i){const d=read('rb_recovery');d.splice(i,1);write('rb_recovery',d);renderRecovery()}
-function exportLogs(){const blob=new Blob([JSON.stringify({runs:read('rb_runs'),recovery:read('rb_recovery')},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='runbalance-logg.json';a.click();URL.revokeObjectURL(a.href)}
-if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
-renderStravaLogs();
+
+function showPage(page){
+ document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));
+ document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+ window.scrollTo({top:0,behavior:'smooth'});
+ if(page==='log'){renderLogs();renderStravaLogs();}
+ if(page==='recovery')renderRecovery();
+}
+
+async function renderStravaLogs(){
+ const el=$('stravaLogs');
+ const status=$('stravaStatus');
+ if(!el||!status)return;
+
+ status.textContent='Hämtar Strava-pass…';
+ el.innerHTML='';
+
+ try{
+  const response=await fetch('https://runbalance-api.eliasyacoub78.workers.dev/strava/activities');
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const data=await response.json();
+  const activities=Array.isArray(data)?data:(data.activities||data.data||[]);
+
+  if(!activities.length){
+   status.textContent='Anslutningen fungerade, men inga pass returnerades.';
+   el.innerHTML='<p class="muted">Inga Strava-pass hittades.</p>';
+   return;
+  }
+
+  status.textContent=activities.length+' Strava-pass hämtade.';
+  el.innerHTML=activities.map(x=>{
+   const rawDate=x.start_date||x.start_date_local||x.date;
+   const date=rawDate?new Date(rawDate).toLocaleDateString('sv-SE'):'Okänt datum';
+   const km=(Number(x.distance_m??x.distance??0)||0)/1000;
+   const seconds=Number(x.moving_time_s??x.moving_time??0)||0;
+   const mins=Math.floor(seconds/60);
+   const duration=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
+   return `<div class="logitem"><strong>${esc(date)} · ${esc(x.name||x.sport_type||x.type||'Strava-pass')}</strong><p>${km.toFixed(2)} km · ${duration}</p></div>`;
+  }).join('');
+ }catch(error){
+  status.textContent='Kunde inte hämta Strava-pass.';
+  el.innerHTML='<p class="muted">Kontrollera att Cloudflare Worker har publicerats och att /strava/activities tillåter GitHub Pages-adressen.</p>';
+ }
+}
+
+function renderLogs(){
+ const data=read('rb_runs');
+ $('metricRuns').textContent=data.length;
+ const last=data[0];
+ $('metricKnee').textContent=last?(last.nextday||'Loggad'):'Ej loggad';
+ $('logs').innerHTML=data.length?data.map((x,i)=>`<div class="logitem"><strong>${esc(x.date)} · ${esc(x.kind)}</strong><p>${esc(x.minutes||'—')} min · ${esc(x.distance||'—')} km</p><p>Knä under pass: ${esc(x.during)} · Dagen efter: ${esc(x.nextday)}</p><p>Dagsform: ${esc(x.fatigue)}${x.notes?' · '+esc(x.notes):''}</p><button class="secondary" onclick="deleteRun(${i})">Ta bort</button></div>`).join(''):'<p class="muted">Inga pass loggade ännu.</p>';
+}
+
+function renderRecovery(){
+ const data=read('rb_recovery');
+ $('recoveryLogs').innerHTML=data.length?data.map((x,i)=>`<div class="logitem"><strong>${esc(x.date)} · ${esc(x.kneeToday)}</strong><p>Energi: ${esc(x.energy)} · Sömn: ${esc(x.sleepQuality)} · Ömhet: ${esc(x.soreness)}</p><p>${esc(x.notes||'')}</p><button class="secondary" onclick="deleteRecovery(${i})">Ta bort</button></div>`).join(''):'<p class="muted">Inga återhämtningsdagar loggade ännu.</p>';
+}
+
+$('runForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const data=read('rb_runs');
+ data.unshift({date:$('date').value,kind:$('kind').value,minutes:$('minutes').value,distance:$('distance').value,during:$('during').value,nextday:$('nextday').value,fatigue:$('fatigue').value,sleep:$('sleep').value,notes:$('notes').value});
+ write('rb_runs',data);
+ $('runForm').reset();
+ $('date').value=today();
+ renderLogs();
+ alert('Passet är sparat på den här enheten.');
+});
+
+$('recoveryForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const data=read('rb_recovery');
+ data.unshift({date:$('rdate').value,kneeToday:$('kneeToday').value,energy:$('energy').value,sleepQuality:$('sleepQuality').value,soreness:$('soreness').value,notes:$('recoveryNotes').value});
+ write('rb_recovery',data);
+ $('recoveryForm').reset();
+ $('rdate').value=today();
+ renderRecovery();
+ alert('Återhämtningen är sparad på den här enheten.');
+});
+
+function deleteRun(i){
+ const d=read('rb_runs');
+ d.splice(i,1);
+ write('rb_runs',d);
+ renderLogs();
+}
+function deleteRecovery(i){
+ const d=read('rb_recovery');
+ d.splice(i,1);
+ write('rb_recovery',d);
+ renderRecovery();
+}
+function exportLogs(){
+ const blob=new Blob([JSON.stringify({runs:read('rb_runs'),recovery:read('rb_recovery')},null,2)],{type:'application/json'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+ a.download='runbalance-logg.json';
+ a.click();
+ URL.revokeObjectURL(a.href);
+}
+
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 renderLogs();
 renderRecovery();
+renderStravaLogs();
 </script>
-</body></html>
+</body>
+</html>
