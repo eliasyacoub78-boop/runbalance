@@ -92,6 +92,12 @@ label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px}input,selec
    <button type="submit" style="width:100%;margin-top:14px">Spara i träningsdagboken</button>
   </form>
  </div>
+ <div class="card">
+  <h2>Strava-pass</h2>
+  <div id="stravaLogs">
+    <p class="muted">Hämtar Strava-pass…</p>
+  </div>
+</div>
  <div class="card"><h2>Tidigare loggar</h2><div id="logs"><p class="muted">Inga pass loggade ännu.</p></div><button class="secondary" onclick="exportLogs()">Exportera logg som JSON</button></div>
 </section>
 <section id="recovery" class="page">
@@ -120,6 +126,42 @@ const write=(key,data)=>localStorage.setItem(key,JSON.stringify(data));
 const today=()=>new Date().toLocaleDateString('sv-SE');
 $('date').value=today(); $('rdate').value=today();
 function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));window.scrollTo({top:0,behavior:'smooth'});if(page==='log')renderLogs();if(page==='recovery')renderRecovery()}
+async function renderStravaLogs() {
+  const el = $('stravaLogs');
+  if (!el) return;
+
+  try {
+    const response = await fetch(
+      'https://runbalance-api.eliasyacoub78.workers.dev/strava/activities'
+    );
+
+    if (!response.ok) throw new Error('Strava kunde inte hämtas');
+
+    const data = await response.json();
+    const activities = data.activities || [];
+
+    el.innerHTML = activities.length
+      ? activities.map(x => {
+          const date = x.start_date
+            ? new Date(x.start_date).toLocaleDateString('sv-SE')
+            : 'Okänt datum';
+          const km = (Number(x.distance_m) || 0) / 1000;
+          const mins = Math.floor((Number(x.moving_time_s) || 0) / 60);
+          const duration = mins >= 60
+            ? `${Math.floor(mins / 60)} h ${mins % 60} min`
+            : `${mins} min`;
+
+          return `<div class="logitem">
+            <strong>${esc(date)} · ${esc(x.name || x.sport_type || 'Strava-pass')}</strong>
+            <p>${km.toFixed(2)} km · ${duration}</p>
+          </div>`;
+        }).join('')
+      : '<p class="muted">Inga Strava-pass hittades.</p>';
+  } catch (error) {
+    el.innerHTML =
+      '<p class="muted">Kunde inte hämta Strava-pass. Kontrollera att Worker-versionen är publicerad.</p>';
+  }
+}
 function renderLogs(){let data=read('rb_runs');$('metricRuns').textContent=data.length;const last=data[0];$('metricKnee').textContent=last?(last.nextday||'Loggad'):'Ej loggad';$('logs').innerHTML=data.length?data.map((x,i)=>`<div class="logitem"><strong>${esc(x.date)} · ${esc(x.kind)}</strong><p>${esc(x.minutes||'—')} min · ${esc(x.distance||'—')} km</p><p>Knä under pass: ${esc(x.during)} · Dagen efter: ${esc(x.nextday)}</p><p>Dagsform: ${esc(x.fatigue)}${x.notes?' · '+esc(x.notes):''}</p><button class="secondary" onclick="deleteRun(${i})">Ta bort</button></div>`).join(''):'<p class="muted">Inga pass loggade ännu.</p>'}
 function renderRecovery(){const data=read('rb_recovery');$('recoveryLogs').innerHTML=data.length?data.map((x,i)=>`<div class="logitem"><strong>${esc(x.date)} · ${esc(x.kneeToday)}</strong><p>Energi: ${esc(x.energy)} · Sömn: ${esc(x.sleepQuality)} · Ömhet: ${esc(x.soreness)}</p><p>${esc(x.notes||'')}</p><button class="secondary" onclick="deleteRecovery(${i})">Ta bort</button></div>`).join(''):'<p class="muted">Inga återhämtningsdagar loggade ännu.</p>'}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -129,6 +171,8 @@ function deleteRun(i){const d=read('rb_runs');d.splice(i,1);write('rb_runs',d);r
 function deleteRecovery(i){const d=read('rb_recovery');d.splice(i,1);write('rb_recovery',d);renderRecovery()}
 function exportLogs(){const blob=new Blob([JSON.stringify({runs:read('rb_runs'),recovery:read('rb_recovery')},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='runbalance-logg.json';a.click();URL.revokeObjectURL(a.href)}
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
-renderLogs();renderRecovery();
+renderStravaLogs();
+renderLogs();
+renderRecovery();
 </script>
 </body></html>
