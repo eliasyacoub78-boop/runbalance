@@ -79,7 +79,16 @@ textarea{min-height:70px;resize:vertical}
 .section-kicker{font-size:10px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:#6c8c69;margin-bottom:7px}
 .card>p:first-of-type{margin-top:0}
 @media(min-width:600px){main{padding:24px 20px}.card{padding:22px}header{padding-left:max(24px,calc((100% - 720px)/2));padding-right:max(24px,calc((100% - 720px)/2))}}
+.route-button{margin-top:8px;padding:9px 12px;font-size:12px}
+.route-modal{display:none;position:fixed;inset:0;background:#10251fe8;z-index:50;padding:18px;align-items:center;justify-content:center}
+.route-modal.open{display:flex}
+.route-dialog{width:100%;max-width:700px;background:white;border-radius:22px;padding:16px;box-shadow:0 20px 70px #0005}
+.route-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.route-map{height:min(60vh,480px);min-height:280px;border-radius:15px;overflow:hidden;background:#e9eee8}
+.route-meta{font-size:13px;color:var(--muted);margin-top:10px}
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 <body>
 <header>
@@ -101,77 +110,201 @@ textarea{min-height:70px;resize:vertical}
  </div>
  <div class="card program-cta">
   <div class="section-kicker">Ditt fokus</div><h2>Följ träningsprogrammet</h2>
-  <p class="muted">Alla åtta veckor, dagens pass och din avbockning finns samlade på ett ställe.</p>
+  <p class="muted">Alla åtta veckor, löppass, cykling och återhämtning finns samlade på ett ställe.</p>
   <button onclick="showPage('plan')" style="width:100%">Öppna mitt 8-veckorsprogram →</button>
  </div>
-<div class="card"><h2>Din löpning från Strava</h2><p class="muted">Dina senaste aktiviteter, utan GPS-rutter.</p><div id="stravaStatus" class="muted"></div><div id="stravaLogs"><p class="muted">Hämtar Strava-pass…</p></div><button class="secondary" onclick="renderStravaLogs()">Uppdatera Strava-pass</button></div>
+ <div class="card"><h2>Din löpning från Strava</h2><p class="muted">Dina senaste aktiviteter. Tryck på en aktivitet för att visa GPS-rutten på karta.</p><div id="stravaStatus" class="muted"></div><div id="stravaLogs"><p class="muted">Hämtar Strava-pass…</p></div><button class="secondary" onclick="renderStravaLogs()">Uppdatera Strava-pass</button></div>
 </section>
+
 <section id="plan" class="page">
  <div class="program-intro">
   <div class="eyebrow" style="color:#6c8c69;margin-top:0">Ditt träningsprogram</div>
   <h2 style="font-size:28px;margin-bottom:8px">Från nuläge till 5 km</h2>
-  <p class="muted">Följ en vecka i taget. Bocka av varje dag när du är klar. Målet är jämn träning – inte att pressa igenom pass.</p>
-  <div class="program-stats"><div><strong>8</strong><span>veckor</span></div><div><strong>3</strong><span>löppass/vecka som riktmärke</span></div><div><strong>1</strong><span>mål: 5 km</span></div></div>
+  <p class="muted">Följ en vecka i taget från måndag till söndag. Programmet kombinerar löpning, lugn cykling, styrka och vila. Bocka av varje dag när du är klar.</p>
+  <div class="program-stats"><div><strong>8</strong><span>veckor</span></div><div><strong>2–3</strong><span>löppass per vecka</span></div><div><strong>1</strong><span>mål: 5 km</span></div></div>
  </div>
  <div class="card">
   <div class="section-kicker">Steg 1 · Välj var du är</div>
   <label for="weekSelect">Träningsvecka</label>
-  <select id="weekSelect" onchange="renderWeeklyPlan()"><option value="0">Vecka 1 – Grund</option><option value="1">Vecka 2 – Rytm</option><option value="2">Vecka 3 – Uthållighet</option><option value="3">Vecka 4 – Återhämtning</option><option value="4">Vecka 5 – Fartuthållighet</option><option value="5">Vecka 6 – Intervaller</option><option value="6">Vecka 7 – Förberedelse</option><option value="7">Vecka 8 – 5 km-test</option></select>
-  <div id="weeklyProgress" class="progress-panel" style="margin-top:14px"></div>
+  <select id="weekSelect" onchange="renderWeeklyPlan()">
+   <option value="0">Vecka 1 · Mjuk start</option><option value="1">Vecka 2 · Bygg rutin</option><option value="2">Vecka 3 · Lite längre</option><option value="3">Vecka 4 · Återhämtning</option><option value="4">Vecka 5 · Bygg uthållighet</option><option value="5">Vecka 6 · Stabilitet</option><option value="6">Vecka 7 · Förberedelse</option><option value="7">Vecka 8 · 5 km</option>
+  </select>
+  <div id="weeklyProgress" class="progress-panel" style="margin-top:12px">Vecka 1: 0 av 7 dagar avklarade</div>
  </div>
- <div class="card">
-  <div class="section-kicker">Steg 2 · Gör veckans plan</div>
-  <h2 style="margin-bottom:4px">Veckans pass</h2>
-  <p class="muted" style="margin-top:0">Markera varje dag när den är genomförd. Vila är också en del av planen.</p>
-  <div id="weeklySessions"></div>
- </div>
- <div class="card safety-card"><h3>Viktigt: anpassa efter kroppen</h3><p class="muted">Öka bara när knät känns bra både under passet och dagen efter. Om smärtan ökar, påverkar löpsteget eller finns kvar i vardagen – pausa löpningen och backa belastningen. Upprepa hellre en vecka än att stressa vidare.</p><button class="secondary" onclick="showPage('recovery')">Logga hur kroppen känns</button></div>
+ <div class="card"><h2>Veckans pass</h2><div id="weeklySessions"></div></div>
+ <div class="card safety-card"><h3>Kom ihåg knät</h3><p class="muted">Avbryt löpningen om du får ökande smärta, svullnad eller förändrat löpsteg. Byt hellre till vila eller lugn cykling. Öka inte mängden om knät är sämre senare samma dag eller morgonen efter.</p></div>
 </section>
+
 <section id="recovery" class="page">
  <div class="card">
-  <h2>Återhämtningslogg</h2><p class="muted">En enkel dagscheck som hjälper dig upptäcka mönster. Det är inte en medicinsk bedömning.</p>
+  <div class="section-kicker">Återhämtning</div><h2>Hur känns kroppen idag?</h2>
+  <p class="muted">En snabb logg hjälper dig att se hur belastningen påverkar knät och energin.</p>
   <form id="recoveryForm">
    <label for="rdate">Datum</label><input id="rdate" type="date" required>
-   <label for="kneeToday">Knä idag</label><select id="kneeToday"><option>Som vanligt / ingen smärta</option><option>Lätt känning</option><option>Mer ont än vanligt</option><option>Smärta i vardagen</option></select>
-   <label for="energy">Energi</label><select id="energy"><option>1 – Mycket låg</option><option>2 – Låg</option><option selected>3 – Normal</option><option>4 – Bra</option><option>5 – Mycket bra</option></select>
-   <label for="sleepQuality">Sömnkvalitet</label><select id="sleepQuality"><option>Dålig</option><option>Okej</option><option selected>Bra</option></select>
-   <label for="soreness">Muskelömhet/trötthet</label><select id="soreness"><option>Ingen</option><option>Lätt</option><option>Måttlig</option><option>Hög</option></select>
-   <label for="recoveryNotes">Anteckning</label><textarea id="recoveryNotes" placeholder="Hur känns kroppen?"></textarea>
+   <label for="kneeToday">Knät idag</label><select id="kneeToday" required><option value="">Välj</option><option>Smärtfritt</option><option>Lätt känning</option><option>Ömt</option><option>Smärta</option></select>
+   <label for="energy">Energi</label><select id="energy" required><option value="">Välj</option><option>Låg</option><option>Okej</option><option>Bra</option><option>Mycket bra</option></select>
+   <label for="sleepQuality">Sömn</label><select id="sleepQuality" required><option value="">Välj</option><option>Dålig</option><option>Okej</option><option>Bra</option></select>
+   <label for="soreness">Muskelömhet</label><select id="soreness" required><option value="">Välj</option><option>Ingen</option><option>Lätt</option><option>Måttlig</option><option>Mycket</option></select>
+   <label for="recoveryNotes">Anteckningar (valfritt)</label><textarea id="recoveryNotes" placeholder="Exempelvis hur kroppen reagerade på senaste passet"></textarea>
    <button type="submit" style="width:100%;margin-top:14px">Spara återhämtning</button>
   </form>
  </div>
- <div class="card"><h2>Återhämtningshistorik</h2><div id="recoveryLogs"><p class="muted">Inga återhämtningsdagar loggade ännu.</p></div></div>
- <div class="notice danger">Om knäsmärtan ökar, påverkar gången/löpsteget eller finns kvar i vardagen: pausa löpningen och sök professionell bedömning.</div>
+ <div class="card"><h2>Tidigare loggar</h2><div id="recoveryLogs"></div></div>
 </section>
 </main>
-<nav class="tabs"><button class="active" data-page="home" onclick="showPage('home')">Översikt</button><button data-page="plan" onclick="showPage('plan')">Program</button><button data-page="recovery" onclick="showPage('recovery')">Återhämtning</button></nav>
-<div class="footer">RunBalance • Återhämtning och programstatus sparas på den här enheten.</div>
+<nav class="tabs">
+ <button class="active" id="tab-home" onclick="showPage('home')">Översikt</button>
+ <button id="tab-plan" onclick="showPage('plan')">Träningsplan</button>
+ <button id="tab-recovery" onclick="showPage('recovery')">Återhämtning</button>
+</nav>
+<div class="footer">RunBalance · Träna långsiktigt och lyssna på kroppen.</div>
+
+<div class="route-modal" id="routeModal" role="dialog" aria-modal="true" aria-labelledby="routeTitle" onclick="if(event.target===this)closeRoute()">
+ <div class="route-dialog">
+  <div class="route-head"><div><h2 id="routeTitle">GPS-rutt</h2><div class="route-meta" id="routeMeta"></div></div><button class="secondary" onclick="closeRoute()">Stäng ✕</button></div>
+  <div id="routeMap" class="route-map"></div>
+  <p id="routeMessage" class="muted"></p>
+ </div>
+</div>
+
 <script>
 const $=id=>document.getElementById(id);
-const read=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}};
-const write=(key,data)=>localStorage.setItem(key,JSON.stringify(data));
-const today=()=>new Date().toLocaleDateString('sv-SE');
+const today=()=>new Date().toISOString().slice(0,10);
 $('rdate').value=today();
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));window.scrollTo({top:0,behavior:'smooth'});if(page==='recovery')renderRecovery();if(page==='home')renderStravaLogs()}
-async function renderStravaLogs(){const el=$('stravaLogs'),status=$('stravaStatus');if(!el)return;if(status)status.textContent='Hämtar aktiviteter…';el.innerHTML='<p class="muted">Hämtar Strava-pass…</p>';try{const response=await fetch('https://runbalance-api.eliasyacoub78.workers.dev/strava/activities');if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();const activities=Array.isArray(data)?data:(data.activities||data.data||[]);if(status)status.textContent=activities.length?activities.length+' aktiviteter hämtade.':'Inga aktiviteter hittades.';if($('stravaCount'))$('stravaCount').textContent=String(activities.length);el.innerHTML=activities.length?activities.map(x=>{const rawDate=x.start_date||x.start_date_local||x.date;const date=rawDate?new Date(rawDate).toLocaleDateString('sv-SE'):'Okänt datum';const km=(Number(x.distance_m??x.distance??0)||0)/1000;const mins=Math.floor((Number(x.moving_time_s??x.moving_time??0)||0)/60);const duration=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;return `<div class="logitem"><strong>${esc(date)} · ${esc(x.name||x.sport_type||x.type||'Strava-pass')}</strong><p>${km.toFixed(2)} km · ${duration}</p></div>`}).join(''):'<p class="muted">Inga Strava-pass hittades.</p>'}catch(e){if(status)status.textContent='Kunde inte hämta Strava-pass.';if($('stravaCount'))$('stravaCount').textContent='—';el.innerHTML='<p class="muted">Kontrollera att Cloudflare Worker är publicerad och att /strava/activities tillåter GitHub Pages-adressen.</p>'}}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function read(key){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}}
+function write(key,data){localStorage.setItem(key,JSON.stringify(data))}
+function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.id==='tab-'+page));window.scrollTo({top:0,behavior:'smooth'});if(page==='recovery')renderRecovery();if(page==='home')renderStravaLogs()}
+
+async function renderStravaLogs(){
+ const el=$('stravaLogs'),status=$('stravaStatus');
+ if(!el)return;
+ if(status)status.textContent='Hämtar aktiviteter…';
+ el.innerHTML='<p class="muted">Hämtar Strava-pass…</p>';
+ try{
+  const response=await fetch('https://runbalance-api.eliasyacoub78.workers.dev/strava/activities');
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const data=await response.json();
+  const activities=Array.isArray(data)?data:(data.activities||data.data||[]);
+  if(status)status.textContent=activities.length?activities.length+' aktiviteter hämtade.':'Inga aktiviteter hittades.';
+  if($('stravaCount'))$('stravaCount').textContent=String(activities.length);
+  el.innerHTML=activities.length?activities.map(x=>{
+   const rawDate=x.start_date||x.start_date_local||x.date;
+   const date=rawDate?new Date(rawDate).toLocaleDateString('sv-SE'):'Okänt datum';
+   const km=(Number(x.distance_m??x.distance??0)||0)/1000;
+   const mins=Math.floor((Number(x.moving_time_s??x.moving_time??0)||0)/60);
+   const duration=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
+   const activityId=x.activity_id||x.id;
+   return `<div class="logitem"><strong>${esc(date)} · ${esc(x.name||x.sport_type||x.type||'Strava-pass')}</strong><p>${km.toFixed(2)} km · ${duration}</p>${activityId?`<button class="secondary route-button" onclick="openRoute('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Visa GPS-rutt på karta →</button>`:'<p class="muted">GPS-karta kräver aktivitets-ID från Worker.</p>'}</div>`;
+  }).join(''):'<p class="muted">Inga Strava-pass hittades.</p>';
+ }catch(e){
+  if(status)status.textContent='Kunde inte hämta Strava-pass.';
+  if($('stravaCount'))$('stravaCount').textContent='—';
+  el.innerHTML='<p class="muted">Kontrollera att Cloudflare Worker är publicerad och att /strava/activities tillåter GitHub Pages-adressen.</p>';
+ }
+}
+
 const weeklyPlans = [
-[["Tisdag","Lugn löpning","4 km i prattempo."],["Onsdag","Vila","Återhämtning."],["Torsdag","Intervaller","6 × 1 minut snabbt, 2 minuter lugnt mellan."],["Fredag","Styrka","2 varv: 10 knäböj, 12 höftlyft, 15 tåhävningar och 30 sekunder planka."],["Lördag","Lugn löpning","3 km mycket lugnt."],["Söndag","Långpass","5 km i prattempo."],["Måndag","Vila","Hel vilodag."]],
-[["Tisdag","Lugn löpning","4 km + 4 × 20 sekunder avslappnade stegringslopp."],["Onsdag","Vila","Återhämtning."],["Torsdag","Intervaller","8 × 1 minut snabbt, 90 sekunder lugnt mellan."],["Fredag","Styrka","2 varv: knäböj, höftlyft, tåhävningar och planka."],["Lördag","Lugn löpning","3–4 km i prattempo."],["Söndag","Långpass","5,5 km lugnt."],["Måndag","Vila","Hel vilodag."]],
-[["Tisdag","Lugn löpning","4–5 km lugnt."],["Onsdag","Vila","Återhämtning."],["Torsdag","Tempointervaller","3 × 5 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Styrka","20 minuter: knäböj, höftlyft, tåhävningar och planka."],["Lördag","Återhämtning","3 km mycket lugnt."],["Söndag","Långpass","6 km lugnt."],["Måndag","Vila","Hel vilodag."]],
-[["Tisdag","Lugn löpning","4 km + 4 × 20 sekunder stegringslopp."],["Onsdag","Vila","Återhämtning."],["Torsdag","Intervaller","5 × 400 meter snabbt men kontrollerat, 200 meter lugn jogg mellan."],["Fredag","Lätt styrka","15 minuter, utan tunga lyft."],["Lördag","Återhämtning","3 km lugnt."],["Söndag","Lugn löpning","5 km lugnt."],["Måndag","Vila","Hel vilodag."]],
-[["Tisdag","Lugn löpning","5 km i prattempo."],["Onsdag","Vila","Återhämtning."],["Torsdag","Tempointervaller","4 × 4 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Styrka","20 minuter helkropp."],["Lördag","Återhämtning","3–4 km lugnt."],["Söndag","Långpass","6,5 km lugnt."],["Måndag","Vila","Hel vilodag."]],
-[["Tisdag","Lugn löpning","4–5 km + 4 stegringslopp."],["Onsdag","Vila","Återhämtning."],["Torsdag","Intervaller","6 × 400 meter snabbt men kontrollerat, 200 meter jogg mellan."],["Fredag","Lätt styrka","15 minuter."],["Lördag","Återhämtning","3 km lugnt."],["Söndag","Lugn löpning","6 km lugnt."],["Måndag","Vila","Hel vilodag."]],
-[["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Vila","Återhämtning."],["Torsdag","Tempointervaller","3 × 6 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Lätt styrka","10–15 minuter."],["Lördag","Återhämtning","3 km lugnt."],["Söndag","Lugn löpning","5 km lugnt."],["Måndag","Vila","Hel vilodag."]],
-[["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Vila","Återhämtning."],["Torsdag","Korta intervaller","4 × 1 minut snabbt, 2 minuter lugnt mellan."],["Fredag","Vila","Ingen styrketräning."],["Lördag","Lätt jogg","15–20 minuter mycket lugnt."],["Söndag","5 km-test","Värm upp 10–15 minuter, spring 5 km och börja kontrollerat. Avsluta med lugn jogg eller gång."],["Måndag","Vila","Notera sluttiden och hur det kändes."]]
+[["Måndag","Vila och återhämtning","Hel vilodag. Känn efter hur kroppen känns efter föregående vecka."],["Tisdag","Lugn löpning","4 km i prattempo."],["Onsdag","Cykling – lugnt","30–40 minuter lätt cykling i bekvämt tempo. Du ska kunna prata obehindrat."],["Torsdag","Intervaller","6 × 1 minut snabbt men kontrollerat, 2 minuter lugnt mellan. Värm upp och varva ner."],["Fredag","Styrka","2 varv: 10 knäböj, 12 höftlyft, 15 tåhävningar och 30 sekunder planka."],["Lördag","Lugn löpning","3 km mycket lugnt."],["Söndag","Långpass","5 km i prattempo."]],
+[["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 × 20 sekunder avslappnade stegringslopp."],["Onsdag","Cykling – lugnt","35–45 minuter lätt cykling. Håll låg ansträngning."],["Torsdag","Intervaller","8 × 1 minut snabbt men kontrollerat, 90 sekunder lugnt mellan."],["Fredag","Styrka","2 varv: knäböj, höftlyft, tåhävningar och planka."],["Lördag","Lugn löpning","3–4 km i prattempo."],["Söndag","Långpass","5,5 km lugnt."]],
+[["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4–5 km lugnt."],["Onsdag","Cykling – lugnt","40–50 minuter lätt cykling, jämnt och bekvämt tempo."],["Torsdag","Tempointervaller","3 × 5 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Styrka","20 minuter: knäböj, höftlyft, tåhävningar och planka."],["Lördag","Återhämtning","3 km mycket lugnt, eller vila om kroppen känns sliten."],["Söndag","Långpass","6 km lugnt."]],
+[["Måndag","Vila och återhämtning","Lugn start på veckan."],["Tisdag","Lugn löpning","4 km + 4 × 20 sekunder stegringslopp."],["Onsdag","Cykling – lugnt","30–40 minuter lätt cykling som skonsam kondition."],["Torsdag","Intervaller","5 × 400 meter snabbt men kontrollerat, 200 meter lugn jogg mellan."],["Fredag","Lätt styrka","15 minuter, utan tunga lyft."],["Lördag","Återhämtning","3 km lugnt, eller vila vid behov."],["Söndag","Lugn löpning","5 km lugnt. Återhämtningsvecka – öka inte tempot."]],
+[["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","5 km i prattempo."],["Onsdag","Cykling – lugnt","40–50 minuter lätt cykling."],["Torsdag","Tempointervaller","4 × 4 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Styrka","20 minuter helkropp, med kontrollerade rörelser."],["Lördag","Återhämtning","3–4 km lugnt."],["Söndag","Långpass","6,5 km lugnt."]],
+[["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4–5 km + 4 stegringslopp."],["Onsdag","Cykling – lugnt","40 minuter lätt cykling. Avsluta med energi kvar."],["Torsdag","Intervaller","6 × 400 meter snabbt men kontrollerat, 200 meter jogg mellan."],["Fredag","Lätt styrka","15 minuter."],["Lördag","Återhämtning","3 km lugnt."],["Söndag","Lugn löpning","6 km lugnt."]],
+[["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lugnt","30–40 minuter lätt cykling, utan hårda intervaller."],["Torsdag","Tempointervaller","3 × 6 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Lätt styrka","10–15 minuter."],["Lördag","Återhämtning","3 km lugnt eller vila om du behöver."],["Söndag","Lugn löpning","5 km lugnt. Spara kraft inför sista veckan."]],
+[["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lätt","20–30 minuter mycket lätt cykling, eller vila."],["Torsdag","Korta intervaller","4 × 1 minut snabbt men kontrollerat, 2 minuter lugnt mellan."],["Fredag","Vila","Ingen styrketräning. Prioritera sömn och återhämtning."],["Lördag","Lätt jogg","15–20 minuter mycket lugnt, eller vila."],["Söndag","5 km-test","Värm upp 10–15 minuter, spring 5 km och börja kontrollerat. Avsluta med lugn jogg eller gång."]]
 ];
-function renderWeeklyPlan(){const week=Number($('weekSelect').value);let done={};try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}const sessions=weeklyPlans[week],prefix='w'+week+'-';$('weeklySessions').innerHTML=sessions.map((s,i)=>{const id=prefix+i;return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`}).join('');const completed=sessions.filter((s,i)=>done[prefix+i]).length;$('weeklyProgress').textContent=`Vecka ${week+1}: ${completed} av ${sessions.length} dagar avklarade`}
-function toggleWeeklyDone(id,checked){let done={};try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}done[id]=checked;localStorage.setItem('rb_weekly_done',JSON.stringify(done));renderWeeklyPlan()}
-function renderRecovery(){const data=read('rb_recovery');$('metricKnee').textContent=data.length?data[0].kneeToday:'Ej loggad';$('recoveryLogs').innerHTML=data.length?data.map((x,i)=>`<div class="logitem"><strong>${esc(x.date)} · ${esc(x.kneeToday)}</strong><p>Energi: ${esc(x.energy)} · Sömn: ${esc(x.sleepQuality)} · Ömhet: ${esc(x.soreness)}</p><p>${esc(x.notes||'')}</p><button class="secondary" onclick="deleteRecovery(${i})">Ta bort</button></div>`).join(''):'<p class="muted">Inga återhämtningsdagar loggade ännu.</p>'}
-$('recoveryForm').addEventListener('submit',e=>{e.preventDefault();const data=read('rb_recovery');data.unshift({date:$('rdate').value,kneeToday:$('kneeToday').value,energy:$('energy').value,sleepQuality:$('sleepQuality').value,soreness:$('soreness').value,notes:$('recoveryNotes').value});write('rb_recovery',data);$('recoveryForm').reset();$('rdate').value=today();renderRecovery();alert('Återhämtningen är sparad på den här enheten.')});
-function deleteRecovery(i){const data=read('rb_recovery');data.splice(i,1);write('rb_recovery',data);renderRecovery()}
+
+function renderWeeklyPlan(){
+ const week=Number($('weekSelect').value);
+ let done={};
+ try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}
+ const sessions=weeklyPlans[week],prefix='w'+week+'-';
+ $('weeklySessions').innerHTML=sessions.map((s,i)=>{
+  const id=prefix+i;
+  return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`;
+ }).join('');
+ const completed=sessions.filter((s,i)=>done[prefix+i]).length;
+ $('weeklyProgress').textContent=`Vecka ${week+1}: ${completed} av ${sessions.length} dagar avklarade`;
+}
+function toggleWeeklyDone(id,checked){
+ let done={};
+ try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}
+ done[id]=checked;
+ localStorage.setItem('rb_weekly_done',JSON.stringify(done));
+ renderWeeklyPlan();
+}
+
+let routeMap=null,routeLine=null;
+function decodePolyline(encoded){
+ let points=[],index=0,lat=0,lng=0;
+ while(index<encoded.length){
+  let b,shift=0,result=0;
+  do{b=encoded.charCodeAt(index++)-63;result|=(b&0x1f)<<shift;shift+=5}while(b>=0x20);
+  lat+=(result&1)?~(result>>1):(result>>1);
+  shift=0;result=0;
+  do{b=encoded.charCodeAt(index++)-63;result|=(b&0x1f)<<shift;shift+=5}while(b>=0x20);
+  lng+=(result&1)?~(result>>1):(result>>1);
+  points.push([lat/1e5,lng/1e5]);
+ }
+ return points;
+}
+async function openRoute(id,name){
+ $('routeModal').classList.add('open');
+ $('routeTitle').textContent=name;
+ $('routeMeta').textContent='Hämtar GPS-rutt från Strava…';
+ $('routeMessage').textContent='Laddar karta…';
+ if(!window.L){$('routeMessage').textContent='Kartan kunde inte laddas. Kontrollera internetanslutningen.';return}
+ if(!routeMap){
+  routeMap=L.map('routeMap');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(routeMap);
+ }
+ setTimeout(()=>routeMap.invalidateSize(),100);
+ if(routeLine){routeMap.removeLayer(routeLine);routeLine=null}
+ try{
+  const res=await fetch('https://runbalance-api.eliasyacoub78.workers.dev/strava/activities/'+encodeURIComponent(id)+'/route');
+  const data=await res.json();
+  if(!res.ok)throw new Error(data.error||'Kunde inte hämta rutt');
+  if(!data.polyline)throw new Error('Strava har ingen GPS-rutt för aktiviteten.');
+  const points=decodePolyline(data.polyline);
+  if(!points.length)throw new Error('GPS-rutten var tom.');
+  routeLine=L.polyline(points,{color:'#245745',weight:5,opacity:.9}).addTo(routeMap);
+  routeMap.fitBounds(routeLine.getBounds(),{padding:[22,22]});
+  const km=(Number(data.distance)||0)/1000;
+  const mins=Math.round(Number(data.moving_time||0)/60);
+  $('routeMeta').textContent=(km?km.toFixed(2)+' km · ':'')+mins+' min';
+  $('routeMessage').textContent='GPS-rutt från Strava. Kartan kan zoomas och flyttas.';
+ }catch(e){
+  $('routeMessage').textContent=e.message||'Kunde inte hämta GPS-rutt. Kontrollera Worker och Strava-behörighet.';
+ }
+}
+function closeRoute(){$('routeModal').classList.remove('open')}
+
+function renderRecovery(){
+ const data=read('rb_recovery');
+ $('metricKnee').textContent=data.length?data[0].kneeToday:'Ej loggad';
+ $('recoveryLogs').innerHTML=data.length?data.map((x,i)=>`<div class="logitem"><strong>${esc(x.date)} · ${esc(x.kneeToday)}</strong><p>Energi: ${esc(x.energy)} · Sömn: ${esc(x.sleepQuality)} · Ömhet: ${esc(x.soreness)}</p><p>${esc(x.notes||'')}</p><button class="secondary" onclick="deleteRecovery(${i})">Ta bort</button></div>`).join(''):'<p class="muted">Inga återhämtningsdagar loggade ännu.</p>';
+}
+$('recoveryForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const data=read('rb_recovery');
+ data.unshift({date:$('rdate').value,kneeToday:$('kneeToday').value,energy:$('energy').value,sleepQuality:$('sleepQuality').value,soreness:$('soreness').value,notes:$('recoveryNotes').value});
+ write('rb_recovery',data);
+ $('recoveryForm').reset();
+ $('rdate').value=today();
+ renderRecovery();
+ alert('Återhämtningen är sparad på den här enheten.');
+});
+function deleteRecovery(i){
+ const data=read('rb_recovery');
+ data.splice(i,1);
+ write('rb_recovery',data);
+ renderRecovery();
+}
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
-renderWeeklyPlan();renderRecovery();renderStravaLogs();
+renderWeeklyPlan();
+renderRecovery();
+renderStravaLogs();
 </script>
 </body>
 </html>
