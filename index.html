@@ -432,6 +432,7 @@ async function openAnalysis(id,name,sportType=""){
   const res=await fetch('https://runbalance-api.eliasyacoub78.workers.dev/strava/activities/'+encodeURIComponent(id)+'/analysis');
   const data=await res.json();
   if(!res.ok)throw new Error(data.error||'Kunde inte hämta passanalysen.');
+  const isCycling=/ride|cycling|virtualride|cykling|cykel/i.test(String(sportType||'')+' '+String(data.sport_type||data.type||'')+' '+String(name||''));
   const avgHr=Number(data.average_heartrate);
   const maxHr=Number(data.max_heartrate);
   const distance=Number(data.distance_m??data.distance??0)/1000;
