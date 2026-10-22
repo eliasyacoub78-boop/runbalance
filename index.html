@@ -387,7 +387,11 @@ async function openAnalysis(id,name){
   $('analysisContent').innerHTML=stats+hrSection+
    '<h3 style="margin-top:18px">Det här gick bra</h3>'+listHtml(evaluation.good,'Det finns inte tillräckligt med data för att säkert lyfta fram något särskilt.')+
    '<h3>Att tänka på</h3>'+listHtml(evaluation.consider,'Det finns inga tydliga förbättringspunkter som kan fastställas från tillgängliga data.')+
-   `<p class="muted">${esc(data.analysis_note||'Bedömningen baseras bara på data som finns tillgängliga för aktiviteten. Den är vägledning, inte en medicinsk bedömning.')}</p>`;
+   `<p class="muted">${esc(data.analysis_note||'Bedömningen baseras bara på data som finns tillgängliga för aktiviteten. Den är vägledning, inte en medicinsk bedömning.')}</p>`+
+   `<div style="margin-top:20px">
+     <button id="specificCoachButton" class="primary" onclick="loadSpecificActivityCoach('${encodeURIComponent(id)}')">Analysera passet med Gemini</button>
+     <div id="specificCoachResults"></div>
+   </div>`;
  }catch(e){
   $('analysisMeta').textContent='Analysen kunde inte laddas';
   $('analysisContent').innerHTML=`<div class="notice danger">${esc(e.message||'Kunde inte hämta passanalysen.')}</div><p class="muted">Kontrollera att Cloudflare Worker har den nya analys-endpointen publicerad och att Strava-anslutningen har åtkomst till pulsströmmar.</p>`;
