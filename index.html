@@ -288,14 +288,6 @@ const weeklyPlans = [
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lugnt","30–40 minuter lätt cykling, utan hårda intervaller."],["Torsdag","Tempointervaller","3 × 6 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Lätt styrka","10–15 minuter."],["Lördag","Återhämtning","3 km lugnt eller vila om du behöver."],["Söndag","Lugn löpning","5 km lugnt. Spara kraft inför sista veckan."]],
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lätt","20–30 minuter mycket lätt cykling, eller vila."],["Torsdag","Korta intervaller","4 × 1 minut snabbt men kontrollerat, 2 minuter lugnt mellan."],["Fredag","Vila","Ingen styrketräning. Prioritera sömn och återhämtning."],["Lördag","Lätt jogg","15–20 minuter mycket lugnt, eller vila."],["Söndag","5 km-test","Värm upp 10–15 minuter, spring 5 km och börja kontrollerat. Avsluta med lugn jogg eller gång."]]
 ];
-function readCycleStats(){
- try{return JSON.parse(localStorage.getItem('rb_cycle_stats')||'{}')}catch(e){return {}}
-}
-function saveCycleStat(id,field,value){
- const data=readCycleStats();
- data[id]={...(data[id]||{}),[field]:value};
- localStorage.setItem('rb_cycle_stats',JSON.stringify(data));
-}
 function renderWeeklyPlan(){
  const week=Number($('weekSelect').value);
  let done={};
