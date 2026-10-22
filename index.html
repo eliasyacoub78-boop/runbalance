@@ -229,7 +229,7 @@ $('rdate').value=today();
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function read(key){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}}
 function write(key,data){localStorage.setItem(key,JSON.stringify(data))}
-function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.id==='tab-'+page));window.scrollTo({top:0,behavior:'smooth'});if(page==='recovery')renderRecovery();if(page==='home')renderStravaLogs()}
+function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.id==='tab-'+page));window.scrollTo({top:0,behavior:'smooth'});if(page==='plan')renderWeeklyPlan();if(page==='recovery')renderRecovery();if(page==='home')renderStravaLogs()}
 let stravaActivitiesCache=[];
 let stravaCurrentPage=1;
 const STRAVA_PAGE_SIZE=10;
@@ -288,40 +288,30 @@ const weeklyPlans = [
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lugnt","30–40 minuter lätt cykling, utan hårda intervaller."],["Torsdag","Tempointervaller","3 × 6 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Lätt styrka","10–15 minuter."],["Lördag","Återhämtning","3 km lugnt eller vila om du behöver."],["Söndag","Lugn löpning","5 km lugnt. Spara kraft inför sista veckan."]],
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lätt","20–30 minuter mycket lätt cykling, eller vila."],["Torsdag","Korta intervaller","4 × 1 minut snabbt men kontrollerat, 2 minuter lugnt mellan."],["Fredag","Vila","Ingen styrketräning. Prioritera sömn och återhämtning."],["Lördag","Lätt jogg","15–20 minuter mycket lugnt, eller vila."],["Söndag","5 km-test","Värm upp 10–15 minuter, spring 5 km och börja kontrollerat. Avsluta med lugn jogg eller gång."]]
 ];
-function readCycleStats(){
- try{return JSON.parse(localStorage.getItem('rb_cycle_stats')||'{}')}catch(e){return {}}
-}
-function saveCycleStat(id,field,value){
- const data=readCycleStats();
- data[id]={...(data[id]||{}),[field]:value};
- localStorage.setItem('rb_cycle_stats',JSON.stringify(data));
-}
 function renderWeeklyPlan(){
- const week=Number($('weekSelect').value);
+ const container=$('weeklySessions');
+ const progress=$('weeklyProgress');
+ const selector=$('weekSelect');
+ if(!container||!selector){
+  console.error('RunBalance: weeklySessions eller weekSelect saknas.');
+  return;
+ }
+ const week=Number(selector.value||0);
+ const sessions=weeklyPlans[week];
  let done={};
  try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}
- const cycleStats=readCycleStats();
- const sessions=weeklyPlans[week],prefix='w'+week+'-';
- $('weeklySessions').innerHTML=sessions.map((s,i)=>{
-  const id=prefix+i;
-  const isCycling=/cykling/i.test(s[1]+' '+s[2]);
-  const stats=cycleStats[id]||{};
-  const cyclingFields=isCycling?`
-   <div class="grid" style="margin-top:10px">
-    <div>
-     <label for="cycleDistance-${id}">Distans (km)</label>
-     <input id="cycleDistance-${id}" type="number" min="0" max="1000" step="0.01" inputmode="decimal" placeholder="t.ex. 25" value="${esc(stats.distance||'')}" onchange="saveCycleStat('${id}','distance',this.value)">
-    </div>
-    <div>
-     <label for="cycleWatts-${id}">Genomsnittlig effekt (W)</label>
-     <input id="cycleWatts-${id}" type="number" min="0" max="2500" step="1" inputmode="numeric" placeholder="t.ex. 150" value="${esc(stats.watts||'')}" onchange="saveCycleStat('${id}','watts',this.value)">
-    </div>
-   </div>
-   <p class="muted" style="margin-top:4px">Uppgifterna sparas automatiskt på den här enheten.</p>`:'';
-  return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p>${cyclingFields}<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`;
+ if(!Array.isArray(sessions)||sessions.length===0){
+  container.innerHTML='<p class="notice danger">Träningspassen kunde inte hittas för den valda veckan.</p>';
+  return;
+ }
+ container.innerHTML=sessions.map((s,i)=>{
+  const id='w'+week+'-'+i;
+  return '<div class="session" style="display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-top:1px solid var(--line)"><div style="flex:1;min-width:0"><h3>'+esc(s[0])+' · '+esc(s[1])+'</h3><p>'+esc(s[2])+'</p><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:18px;flex:0 0 18px" '+(done[id]?'checked':'')+' onchange="toggleWeeklyDone(\''+id+'\',this.checked)">Pass genomfört</label></div></div>';
  }).join('');
- const completed=sessions.filter((s,i)=>done[prefix+i]).length;
- $('weeklyProgress').textContent=`Vecka ${week+1}: ${completed} av ${sessions.length} dagar avklarade`;
+ if(progress){
+  const completed=sessions.filter((s,i)=>done['w'+week+'-'+i]).length;
+  progress.textContent='Vecka '+(week+1)+': '+completed+' av '+sessions.length+' dagar avklarade';
+ }
 }
 function toggleWeeklyDone(id,checked){
  let done={};
@@ -400,6 +390,23 @@ function listHtml(items,emptyText){
  const list=Array.isArray(items)?items:[];
  return list.length?`<ul class="analysis-list">${list.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<p class="muted">${esc(emptyText)}</p>`;
 }
+function manualRideStorageKey(activityId){
+ return 'rb_manual_ride_'+String(activityId);
+}
+function loadManualRide(activityId){
+ try{
+  return JSON.parse(localStorage.getItem(manualRideStorageKey(activityId))||'{}')||{};
+ }catch(e){return {};}
+}
+function saveManualRide(activityId,movingSeconds){
+ const distance=String($('manualRideDistance')?.value||'');
+ const watts=String($('manualRideWatts')?.value||'');
+ try{
+  localStorage.setItem(manualRideStorageKey(decodeURIComponent(activityId)),JSON.stringify({distance,watts}));
+ }catch(e){console.warn('Kunde inte spara cykelvärden lokalt.',e);}
+ updateManualRideSpeed(movingSeconds);
+}
+
 async function openAnalysis(id,name){
  $('analysisModal').classList.add('open');
  $('analysisTitle').textContent=name+' – passanalys';
@@ -413,6 +420,7 @@ async function openAnalysis(id,name){
   const maxHr=Number(data.max_heartrate);
   const distance=Number(data.distance_m??data.distance??0)/1000;
   const moving=Number(data.moving_time_s??data.moving_time??0);
+  const savedRide=loadManualRide(id);
   const pace=Number(data.pace_min_per_km);
   const zones=data.zones||{};
   $('analysisMeta').textContent=(distance?distance.toFixed(2)+' km · ':'')+fmtDuration(moving);
@@ -436,13 +444,14 @@ async function openAnalysis(id,name){
      <h3>Komplettera passet</h3>
      <p class="muted">För inomhuscykling fyller du i distans och snitt watt här. Snittfarten räknas automatiskt från distansen och tiden ${fmtDuration(moving)} som importerats från Strava.</p>
      <div class="analysis-grid" style="margin-top:12px">
-       <div><label for="manualRideDistance">Distans (km)</label><input id="manualRideDistance" type="number" min="0" max="1000" step="0.01" placeholder="t.ex. 25" oninput="updateManualRideSpeed(${moving})"></div>
-       <div><label for="manualRideWatts">Snitt watt (W)</label><input id="manualRideWatts" type="number" min="0" max="2500" step="1" placeholder="t.ex. 150"></div>
+       <div><label for="manualRideDistance">Distans (km)</label><input id="manualRideDistance" type="number" min="0" max="1000" step="0.01" placeholder="t.ex. 25" value="${esc(savedRide.distance||'')}" oninput="saveManualRide('${encodeURIComponent(id)}',${moving})"></div>
+       <div><label for="manualRideWatts">Snitt watt (W)</label><input id="manualRideWatts" type="number" min="0" max="2500" step="1" placeholder="t.ex. 150" value="${esc(savedRide.watts||'')}" oninput="saveManualRide('${encodeURIComponent(id)}',${moving})"></div>
      </div>
      <p id="manualRideSpeed" class="muted">Snittfart: ange distans för att räkna ut farten.</p>
      <button id="specificCoachButton" class="primary" onclick="loadSpecificActivityCoach('${encodeURIComponent(id)}',${moving})">Analysera passet med Gemini</button>
      <div id="specificCoachResults"></div>
    </div>`;
+  updateManualRideSpeed(moving);
  }catch(e){
   $('analysisMeta').textContent='Analysen kunde inte laddas';
   $('analysisContent').innerHTML=`<div class="notice danger">${esc(e.message||'Kunde inte hämta passanalysen.')}</div><p class="muted">Kontrollera att Cloudflare Worker har den nya analys-endpointen publicerad och att Strava-anslutningen har åtkomst till pulsströmmar.</p>`;
@@ -651,9 +660,10 @@ function deleteRecovery(i){
  renderRecovery();
 }
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
-renderWeeklyPlan();
-renderRecovery();
-renderStravaLogs();
+try{renderWeeklyPlan();}catch(error){console.error(error);if($('weeklySessions'))$('weeklySessions').innerHTML='<p class="notice danger">Ett fel uppstod när träningspassen skulle visas.</p>';}
+document.addEventListener('DOMContentLoaded',()=>{try{renderWeeklyPlan();}catch(error){console.error(error);}});
+try{renderRecovery();}catch(error){console.error(error);}
+try{renderStravaLogs();}catch(error){console.error(error);}
 </script>
 </body>
 </html>
