@@ -392,6 +392,23 @@ function listHtml(items,emptyText){
  const list=Array.isArray(items)?items:[];
  return list.length?`<ul class="analysis-list">${list.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<p class="muted">${esc(emptyText)}</p>`;
 }
+function manualRideStorageKey(activityId){
+ return 'rb_manual_ride_'+String(activityId);
+}
+function loadManualRide(activityId){
+ try{
+  return JSON.parse(localStorage.getItem(manualRideStorageKey(activityId))||'{}')||{};
+ }catch(e){return {};}
+}
+function saveManualRide(activityId,movingSeconds){
+ const distance=String($('manualRideDistance')?.value||'');
+ const watts=String($('manualRideWatts')?.value||'');
+ try{
+  localStorage.setItem(manualRideStorageKey(decodeURIComponent(activityId)),JSON.stringify({distance,watts}));
+ }catch(e){console.warn('Kunde inte spara cykelvärden lokalt.',e);}
+ updateManualRideSpeed(movingSeconds);
+}
+
 async function openAnalysis(id,name){
  $('analysisModal').classList.add('open');
  $('analysisTitle').textContent=name+' – passanalys';
@@ -405,6 +422,7 @@ async function openAnalysis(id,name){
   const maxHr=Number(data.max_heartrate);
   const distance=Number(data.distance_m??data.distance??0)/1000;
   const moving=Number(data.moving_time_s??data.moving_time??0);
+  const savedRide=loadManualRide(id);
   const pace=Number(data.pace_min_per_km);
   const zones=data.zones||{};
   $('analysisMeta').textContent=(distance?distance.toFixed(2)+' km · ':'')+fmtDuration(moving);
@@ -428,13 +446,14 @@ async function openAnalysis(id,name){
      <h3>Komplettera passet</h3>
      <p class="muted">För inomhuscykling fyller du i distans och snitt watt här. Snittfarten räknas automatiskt från distansen och tiden ${fmtDuration(moving)} som importerats från Strava.</p>
      <div class="analysis-grid" style="margin-top:12px">
-       <div><label for="manualRideDistance">Distans (km)</label><input id="manualRideDistance" type="number" min="0" max="1000" step="0.01" placeholder="t.ex. 25" oninput="updateManualRideSpeed(${moving})"></div>
-       <div><label for="manualRideWatts">Snitt watt (W)</label><input id="manualRideWatts" type="number" min="0" max="2500" step="1" placeholder="t.ex. 150"></div>
+       <div><label for="manualRideDistance">Distans (km)</label><input id="manualRideDistance" type="number" min="0" max="1000" step="0.01" placeholder="t.ex. 25" value="${esc(savedRide.distance||'')}" oninput="saveManualRide('${encodeURIComponent(id)}',${moving})"></div>
+       <div><label for="manualRideWatts">Snitt watt (W)</label><input id="manualRideWatts" type="number" min="0" max="2500" step="1" placeholder="t.ex. 150" value="${esc(savedRide.watts||'')}" oninput="saveManualRide('${encodeURIComponent(id)}',${moving})"></div>
      </div>
      <p id="manualRideSpeed" class="muted">Snittfart: ange distans för att räkna ut farten.</p>
      <button id="specificCoachButton" class="primary" onclick="loadSpecificActivityCoach('${encodeURIComponent(id)}',${moving})">Analysera passet med Gemini</button>
      <div id="specificCoachResults"></div>
    </div>`;
+  updateManualRideSpeed(moving);
  }catch(e){
   $('analysisMeta').textContent='Analysen kunde inte laddas';
   $('analysisContent').innerHTML=`<div class="notice danger">${esc(e.message||'Kunde inte hämta passanalysen.')}</div><p class="muted">Kontrollera att Cloudflare Worker har den nya analys-endpointen publicerad och att Strava-anslutningen har åtkomst till pulsströmmar.</p>`;
