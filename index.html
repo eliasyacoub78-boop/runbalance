@@ -289,20 +289,32 @@ const weeklyPlans = [
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lätt","20–30 minuter mycket lätt cykling, eller vila."],["Torsdag","Korta intervaller","4 × 1 minut snabbt men kontrollerat, 2 minuter lugnt mellan."],["Fredag","Vila","Ingen styrketräning. Prioritera sömn och återhämtning."],["Lördag","Lätt jogg","15–20 minuter mycket lugnt, eller vila."],["Söndag","5 km-test","Värm upp 10–15 minuter, spring 5 km och börja kontrollerat. Avsluta med lugn jogg eller gång."]]
 ];
 function renderWeeklyPlan(){
- const week=Number($('weekSelect').value);
- let done={};
- try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}
- const sessions=weeklyPlans[week],prefix='w'+week+'-';
- if(!Array.isArray(sessions)){
-  $('weeklySessions').innerHTML='<p class="muted">Träningspassen kunde inte laddas. Välj en träningsvecka igen.</p>';
+ const container=$('weeklySessions');
+ const progress=$('weeklyProgress');
+ const selector=$('weekSelect');
+ if(!container||!selector){
+  console.error('RunBalance: weeklySessions eller weekSelect saknas i HTML.');
   return;
  }
- $('weeklySessions').innerHTML=sessions.map((s,i)=>{
-  const id=prefix+i;
-  return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`;
- }).join('');
- const completed=sessions.filter((s,i)=>done[prefix+i]).length;
- $('weeklyProgress').textContent=`Vecka ${week+1}: ${completed} av ${sessions.length} dagar avklarade`;
+ try{
+  const week=Number(selector.value||0);
+  let done={};
+  try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}
+  const sessions=weeklyPlans[week],prefix='w'+week+'-';
+  if(!Array.isArray(sessions)||sessions.length===0){
+   container.innerHTML='<p class="muted">Träningspassen kunde inte laddas. Välj en träningsvecka igen.</p>';
+   return;
+  }
+  container.innerHTML=sessions.map((s,i)=>{
+   const id=prefix+i;
+   return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`;
+  }).join('');
+  const completed=sessions.filter((s,i)=>done[prefix+i]).length;
+  if(progress)progress.textContent=`Vecka ${week+1}: ${completed} av ${sessions.length} dagar avklarade`;
+ }catch(error){
+  console.error('RunBalance kunde inte visa träningspassen:',error);
+  container.innerHTML='<p class="notice danger">Träningspassen kunde inte visas. Ladda om sidan. Om felet kvarstår behöver JavaScript-felet kontrolleras.</p>';
+ }
 }
 function toggleWeeklyDone(id,checked){
  let done={};
@@ -651,9 +663,9 @@ function deleteRecovery(i){
  renderRecovery();
 }
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
-renderWeeklyPlan();
-renderRecovery();
-renderStravaLogs();
+try{renderWeeklyPlan();}catch(error){console.error(error);if($('weeklySessions'))$('weeklySessions').innerHTML='<p class="notice danger">Ett fel uppstod när träningspassen skulle visas.</p>';}
+try{renderRecovery();}catch(error){console.error(error);}
+try{renderStravaLogs();}catch(error){console.error(error);}
 </script>
 </body>
 </html>
