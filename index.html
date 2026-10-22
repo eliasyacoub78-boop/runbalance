@@ -86,6 +86,21 @@ textarea{min-height:70px;resize:vertical}
 .route-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
 .route-map{height:min(60vh,480px);min-height:280px;border-radius:15px;overflow:hidden;background:#e9eee8}
 .route-meta{font-size:13px;color:var(--muted);margin-top:10px}
+.activity-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.activity-actions button{flex:1;min-width:130px}
+.analysis-modal{display:none;position:fixed;inset:0;background:#10251fe8;z-index:60;padding:14px;align-items:center;justify-content:center}
+.analysis-modal.open{display:flex}
+.analysis-dialog{width:100%;max-width:680px;max-height:90vh;overflow:auto;background:white;border-radius:22px;padding:18px;box-shadow:0 20px 70px #0005}
+.analysis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}
+.analysis-metric{background:#f3f7f0;border:1px solid #e2e9e1;border-radius:14px;padding:12px}
+.analysis-metric small{display:block;color:var(--muted);font-size:11px}
+.analysis-metric strong{display:block;font-size:20px;margin-top:4px}
+.zone-row{display:grid;grid-template-columns:42px 1fr 72px;align-items:center;gap:8px;margin:12px 0;font-size:12px}
+.zone-track{height:10px;background:#edf1eb;border-radius:99px;overflow:hidden}
+.zone-fill{height:100%;background:#245745;border-radius:99px}
+.analysis-list{padding-left:19px;margin:8px 0 16px}
+.analysis-list li{margin:7px 0;font-size:13px}
+@media(min-width:520px){.analysis-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -115,7 +130,6 @@ textarea{min-height:70px;resize:vertical}
  </div>
  <div class="card"><h2>Din löpning från Strava</h2><p class="muted">Dina senaste aktiviteter. Tryck på en aktivitet för att visa GPS-rutten på karta.</p><div id="stravaStatus" class="muted"></div><div id="stravaLogs"><p class="muted">Hämtar Strava-pass…</p></div><button class="secondary" onclick="renderStravaLogs()">Uppdatera Strava-pass</button></div>
 </section>
-
 <section id="plan" class="page">
  <div class="program-intro">
   <div class="eyebrow" style="color:#6c8c69;margin-top:0">Ditt träningsprogram</div>
@@ -134,7 +148,6 @@ textarea{min-height:70px;resize:vertical}
  <div class="card"><h2>Veckans pass</h2><div id="weeklySessions"></div></div>
  <div class="card safety-card"><h3>Kom ihåg knät</h3><p class="muted">Avbryt löpningen om du får ökande smärta, svullnad eller förändrat löpsteg. Byt hellre till vila eller lugn cykling. Öka inte mängden om knät är sämre senare samma dag eller morgonen efter.</p></div>
 </section>
-
 <section id="recovery" class="page">
  <div class="card">
   <div class="section-kicker">Återhämtning</div><h2>Hur känns kroppen idag?</h2>
@@ -158,7 +171,6 @@ textarea{min-height:70px;resize:vertical}
  <button id="tab-recovery" onclick="showPage('recovery')">Återhämtning</button>
 </nav>
 <div class="footer">RunBalance · Träna långsiktigt och lyssna på kroppen.</div>
-
 <div class="route-modal" id="routeModal" role="dialog" aria-modal="true" aria-labelledby="routeTitle" onclick="if(event.target===this)closeRoute()">
  <div class="route-dialog">
   <div class="route-head"><div><h2 id="routeTitle">GPS-rutt</h2><div class="route-meta" id="routeMeta"></div></div><button class="secondary" onclick="closeRoute()">Stäng ✕</button></div>
@@ -166,7 +178,12 @@ textarea{min-height:70px;resize:vertical}
   <p id="routeMessage" class="muted"></p>
  </div>
 </div>
-
+<div class="analysis-modal" id="analysisModal" role="dialog" aria-modal="true" aria-labelledby="analysisTitle" onclick="if(event.target===this)closeAnalysis()">
+ <div class="analysis-dialog">
+  <div class="route-head"><div><h2 id="analysisTitle">Passanalys</h2><div class="route-meta" id="analysisMeta"></div></div><button class="secondary" onclick="closeAnalysis()">Stäng ✕</button></div>
+  <div id="analysisContent"><p class="muted">Hämtar analys…</p></div>
+ </div>
+</div>
 <script>
 const $=id=>document.getElementById(id);
 const today=()=>new Date().toISOString().slice(0,10);
@@ -175,7 +192,6 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function read(key){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}}
 function write(key,data){localStorage.setItem(key,JSON.stringify(data))}
 function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.id==='tab-'+page));window.scrollTo({top:0,behavior:'smooth'});if(page==='recovery')renderRecovery();if(page==='home')renderStravaLogs()}
-
 async function renderStravaLogs(){
  const el=$('stravaLogs'),status=$('stravaStatus');
  if(!el)return;
@@ -195,7 +211,7 @@ async function renderStravaLogs(){
    const mins=Math.floor((Number(x.moving_time_s??x.moving_time??0)||0)/60);
    const duration=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
    const activityId=x.activity_id||x.id;
-   return `<div class="logitem"><strong>${esc(date)} · ${esc(x.name||x.sport_type||x.type||'Strava-pass')}</strong><p>${km.toFixed(2)} km · ${duration}</p>${activityId?`<button class="secondary route-button" onclick="openRoute('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Visa GPS-rutt på karta →</button>`:'<p class="muted">GPS-karta kräver aktivitets-ID från Worker.</p>'}</div>`;
+   return `<div class="logitem"><strong>${esc(date)} · ${esc(x.name||x.sport_type||x.type||'Strava-pass')}</strong><p>${km.toFixed(2)} km · ${duration}</p>${activityId?`<div class="activity-actions"><button class="secondary route-button" onclick="openAnalysis('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Analysera pass</button><button class="secondary route-button" onclick="openRoute('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Visa GPS-rutt</button></div>`:'<p class="muted">Aktivitets-ID saknas.</p>'}</div>`;
   }).join(''):'<p class="muted">Inga Strava-pass hittades.</p>';
  }catch(e){
   if(status)status.textContent='Kunde inte hämta Strava-pass.';
@@ -203,7 +219,6 @@ async function renderStravaLogs(){
   el.innerHTML='<p class="muted">Kontrollera att Cloudflare Worker är publicerad och att /strava/activities tillåter GitHub Pages-adressen.</p>';
  }
 }
-
 const weeklyPlans = [
 [["Måndag","Vila och återhämtning","Hel vilodag. Känn efter hur kroppen känns efter föregående vecka."],["Tisdag","Lugn löpning","4 km i prattempo."],["Onsdag","Cykling – lugnt","30–40 minuter lätt cykling i bekvämt tempo. Du ska kunna prata obehindrat."],["Torsdag","Intervaller","6 × 1 minut snabbt men kontrollerat, 2 minuter lugnt mellan. Värm upp och varva ner."],["Fredag","Styrka","2 varv: 10 knäböj, 12 höftlyft, 15 tåhävningar och 30 sekunder planka."],["Lördag","Lugn löpning","3 km mycket lugnt."],["Söndag","Långpass","5 km i prattempo."]],
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 × 20 sekunder avslappnade stegringslopp."],["Onsdag","Cykling – lugnt","35–45 minuter lätt cykling. Håll låg ansträngning."],["Torsdag","Intervaller","8 × 1 minut snabbt men kontrollerat, 90 sekunder lugnt mellan."],["Fredag","Styrka","2 varv: knäböj, höftlyft, tåhävningar och planka."],["Lördag","Lugn löpning","3–4 km i prattempo."],["Söndag","Långpass","5,5 km lugnt."]],
@@ -214,7 +229,6 @@ const weeklyPlans = [
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lugnt","30–40 minuter lätt cykling, utan hårda intervaller."],["Torsdag","Tempointervaller","3 × 6 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Lätt styrka","10–15 minuter."],["Lördag","Återhämtning","3 km lugnt eller vila om du behöver."],["Söndag","Lugn löpning","5 km lugnt. Spara kraft inför sista veckan."]],
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lätt","20–30 minuter mycket lätt cykling, eller vila."],["Torsdag","Korta intervaller","4 × 1 minut snabbt men kontrollerat, 2 minuter lugnt mellan."],["Fredag","Vila","Ingen styrketräning. Prioritera sömn och återhämtning."],["Lördag","Lätt jogg","15–20 minuter mycket lugnt, eller vila."],["Söndag","5 km-test","Värm upp 10–15 minuter, spring 5 km och börja kontrollerat. Avsluta med lugn jogg eller gång."]]
 ];
-
 function renderWeeklyPlan(){
  const week=Number($('weekSelect').value);
  let done={};
@@ -234,7 +248,6 @@ function toggleWeeklyDone(id,checked){
  localStorage.setItem('rb_weekly_done',JSON.stringify(done));
  renderWeeklyPlan();
 }
-
 let routeMap=null,routeLine=null;
 function decodePolyline(encoded){
  let points=[],index=0,lat=0,lng=0;
@@ -279,7 +292,69 @@ async function openRoute(id,name){
  }
 }
 function closeRoute(){$('routeModal').classList.remove('open')}
-
+function closeAnalysis(){$('analysisModal').classList.remove('open')}
+function fmtDuration(seconds){
+ const n=Math.max(0,Math.round(Number(seconds)||0));
+ const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),sec=n%60;
+ if(h)return `${h} h ${m} min`;
+ if(m)return `${m} min ${sec} s`;
+ return `${sec} s`;
+}
+function fmtPace(value){
+ const n=Number(value);
+ if(!Number.isFinite(n)||n<=0)return 'Saknas';
+ const m=Math.floor(n),sec=Math.round((n-m)*60);
+ return `${m}:${String(sec).padStart(2,'0')} min/km`;
+}
+function renderZoneRows(zones){
+ const labels=[['Z1','100–119 bpm'],['Z2','120–139 bpm'],['Z3','140–159 bpm'],['Z4','160–179 bpm'],['Z5','180–200 bpm']];
+ return labels.map(([key,range])=>{
+  const z=zones&&zones[key]||{};
+  const pct=Math.max(0,Math.min(100,Number(z.percentage)||0));
+  return `<div class="zone-row"><div><strong>${key}</strong><br><span class="muted">${range}</span></div><div><div class="zone-track"><div class="zone-fill" style="width:${pct}%"></div></div><div class="muted">${fmtDuration(z.seconds||0)}</div></div><strong style="text-align:right">${pct.toFixed(1)}%</strong></div>`;
+ }).join('');
+}
+function listHtml(items,emptyText){
+ const list=Array.isArray(items)?items:[];
+ return list.length?`<ul class="analysis-list">${list.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:`<p class="muted">${esc(emptyText)}</p>`;
+}
+async function openAnalysis(id,name){
+ $('analysisModal').classList.add('open');
+ $('analysisTitle').textContent=name+' – passanalys';
+ $('analysisMeta').textContent='Hämtar data från Strava…';
+ $('analysisContent').innerHTML='<p class="muted">Analyserar aktivitetens puls och tempo…</p>';
+ try{
+  const res=await fetch('https://runbalance-api.eliasyacoub78.workers.dev/strava/activities/'+encodeURIComponent(id)+'/analysis');
+  const data=await res.json();
+  if(!res.ok)throw new Error(data.error||'Kunde inte hämta passanalysen.');
+  const avgHr=Number(data.average_heartrate);
+  const maxHr=Number(data.max_heartrate);
+  const distance=Number(data.distance_m??data.distance??0)/1000;
+  const moving=Number(data.moving_time_s??data.moving_time??0);
+  const pace=Number(data.pace_min_per_km);
+  const zones=data.zones||{};
+  $('analysisMeta').textContent=(distance?distance.toFixed(2)+' km · ':'')+fmtDuration(moving);
+  const hrMissing=data.heart_rate_available===false||!Number.isFinite(avgHr)||avgHr<=0;
+  const stats=`
+   <div class="analysis-grid">
+    <div class="analysis-metric"><small>Distans</small><strong>${distance?distance.toFixed(2)+' km':'Saknas'}</strong></div>
+    <div class="analysis-metric"><small>Snittempo</small><strong>${fmtPace(pace)}</strong></div>
+    <div class="analysis-metric"><small>Snittpuls</small><strong>${!hrMissing?Math.round(avgHr)+' bpm':'Saknas'}</strong></div>
+    <div class="analysis-metric"><small>Maxpuls</small><strong>${Number.isFinite(maxHr)&&maxHr>0?Math.round(maxHr)+' bpm':'Saknas'}</strong></div>
+   </div>`;
+  const hrSection=hrMissing
+   ?'<div class="notice">Det finns inga användbara pulsdata för det här passet. Pulssnitt, pulszoner och pulsbaserade slutsatser kan därför inte beräknas.</div>'
+   :`<h3>Pulszoner</h3><p class="muted">Beräknat från registrerad pulskurva. Maxpuls: 200 bpm. Tid och procent räknas endast på datapunkter med giltig puls i zonerna.</p>${renderZoneRows(zones)}${Number(data.unzoned_seconds)>0?`<p class="muted">${fmtDuration(data.unzoned_seconds)} av registrerad tid låg utanför zonerna eller saknade giltig puls.</p>`:''}`;
+  const evaluation=data.evaluation||{};
+  $('analysisContent').innerHTML=stats+hrSection+
+   '<h3 style="margin-top:18px">Det här gick bra</h3>'+listHtml(evaluation.good,'Det finns inte tillräckligt med data för att säkert lyfta fram något särskilt.')+
+   '<h3>Att tänka på</h3>'+listHtml(evaluation.consider,'Det finns inga tydliga förbättringspunkter som kan fastställas från tillgängliga data.')+
+   `<p class="muted">${esc(data.analysis_note||'Bedömningen baseras bara på data som finns tillgängliga för aktiviteten. Den är vägledning, inte en medicinsk bedömning.')}</p>`;
+ }catch(e){
+  $('analysisMeta').textContent='Analysen kunde inte laddas';
+  $('analysisContent').innerHTML=`<div class="notice danger">${esc(e.message||'Kunde inte hämta passanalysen.')}</div><p class="muted">Kontrollera att Cloudflare Worker har den nya analys-endpointen publicerad och att Strava-anslutningen har åtkomst till pulsströmmar.</p>`;
+ }
+}
 function renderRecovery(){
  const data=read('rb_recovery');
  $('metricKnee').textContent=data.length?data[0].kneeToday:'Ej loggad';
