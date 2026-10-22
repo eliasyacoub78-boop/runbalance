@@ -229,7 +229,7 @@ $('rdate').value=today();
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function read(key){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}}
 function write(key,data){localStorage.setItem(key,JSON.stringify(data))}
-function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.id==='tab-'+page));window.scrollTo({top:0,behavior:'smooth'});if(page==='recovery')renderRecovery();if(page==='home')renderStravaLogs()}
+function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.id==='tab-'+page));window.scrollTo({top:0,behavior:'smooth'});if(page==='plan')renderWeeklyPlan();if(page==='recovery')renderRecovery();if(page==='home')renderStravaLogs()}
 let stravaActivitiesCache=[];
 let stravaCurrentPage=1;
 const STRAVA_PAGE_SIZE=10;
@@ -293,27 +293,24 @@ function renderWeeklyPlan(){
  const progress=$('weeklyProgress');
  const selector=$('weekSelect');
  if(!container||!selector){
-  console.error('RunBalance: weeklySessions eller weekSelect saknas i HTML.');
+  console.error('RunBalance: weeklySessions eller weekSelect saknas.');
   return;
  }
- try{
-  const week=Number(selector.value||0);
-  let done={};
-  try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}
-  const sessions=weeklyPlans[week],prefix='w'+week+'-';
-  if(!Array.isArray(sessions)||sessions.length===0){
-   container.innerHTML='<p class="muted">Träningspassen kunde inte laddas. Välj en träningsvecka igen.</p>';
-   return;
-  }
-  container.innerHTML=sessions.map((s,i)=>{
-   const id=prefix+i;
-   return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`;
-  }).join('');
-  const completed=sessions.filter((s,i)=>done[prefix+i]).length;
-  if(progress)progress.textContent=`Vecka ${week+1}: ${completed} av ${sessions.length} dagar avklarade`;
- }catch(error){
-  console.error('RunBalance kunde inte visa träningspassen:',error);
-  container.innerHTML='<p class="notice danger">Träningspassen kunde inte visas. Ladda om sidan. Om felet kvarstår behöver JavaScript-felet kontrolleras.</p>';
+ const week=Number(selector.value||0);
+ const sessions=weeklyPlans[week];
+ let done={};
+ try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}
+ if(!Array.isArray(sessions)||sessions.length===0){
+  container.innerHTML='<p class="notice danger">Träningspassen kunde inte hittas för den valda veckan.</p>';
+  return;
+ }
+ container.innerHTML=sessions.map((s,i)=>{
+  const id='w'+week+'-'+i;
+  return '<div class="session" style="display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-top:1px solid var(--line)"><div style="flex:1;min-width:0"><h3>'+esc(s[0])+' · '+esc(s[1])+'</h3><p>'+esc(s[2])+'</p><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:18px;flex:0 0 18px" '+(done[id]?'checked':'')+' onchange="toggleWeeklyDone(\''+id+'\',this.checked)">Pass genomfört</label></div></div>';
+ }).join('');
+ if(progress){
+  const completed=sessions.filter((s,i)=>done['w'+week+'-'+i]).length;
+  progress.textContent='Vecka '+(week+1)+': '+completed+' av '+sessions.length+' dagar avklarade';
  }
 }
 function toggleWeeklyDone(id,checked){
@@ -664,6 +661,7 @@ function deleteRecovery(i){
 }
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 try{renderWeeklyPlan();}catch(error){console.error(error);if($('weeklySessions'))$('weeklySessions').innerHTML='<p class="notice danger">Ett fel uppstod när träningspassen skulle visas.</p>';}
+document.addEventListener('DOMContentLoaded',()=>{try{renderWeeklyPlan();}catch(error){console.error(error);}});
 try{renderRecovery();}catch(error){console.error(error);}
 try{renderStravaLogs();}catch(error){console.error(error);}
 </script>
