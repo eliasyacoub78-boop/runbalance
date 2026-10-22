@@ -148,6 +148,43 @@ textarea{min-height:70px;resize:vertical}
  <div class="card"><h2>Veckans pass</h2><div id="weeklySessions"></div></div>
  <div class="card safety-card"><h3>Kom ihåg knät</h3><p class="muted">Avbryt löpningen om du får ökande smärta, svullnad eller förändrat löpsteg. Byt hellre till vila eller lugn cykling. Öka inte mängden om knät är sämre senare samma dag eller morgonen efter.</p></div>
 </section>
+
+<section id="coach" class="page">
+  <div class="card">
+    <div class="section-kicker">Din personliga AI-coach</div>
+    <h2>Bygg uthållighet, steg för steg</h2>
+    <p class="muted">
+      Gemini analyserar din träningshistorik från Strava
+      och ger förslag som du själv väljer om du vill följa.
+    </p>
+    <button id="coachRefresh" onclick="loadEnduranceCoach()" style="width:100%">
+      Analysera min träning
+    </button>
+    <p id="coachStatus" class="muted" aria-live="polite">
+      Tryck på knappen för att hämta din första analys.
+    </p>
+  </div>
+
+  <div id="coachResults" aria-live="polite">
+    <div class="card">
+      <h2>Din träningsanalys</h2>
+      <p class="muted">
+        Här visas din analys, dina styrkor och rekommendationer.
+      </p>
+    </div>
+  </div>
+
+  <div class="card safety-card">
+    <h3>Du bestämmer alltid</h3>
+    <p class="muted">
+      AI-coachen ger allmänna träningsförslag baserade på
+      tillgänglig data. Den känner inte automatiskt till
+      smärta, sömn eller hur ansträngande ett pass kändes.
+      Anpassa träningen efter hur kroppen reagerar.
+    </p>
+  </div>
+</section>
+
 <section id="recovery" class="page">
  <div class="card">
   <div class="section-kicker">Återhämtning</div><h2>Hur känns kroppen idag?</h2>
@@ -166,9 +203,10 @@ textarea{min-height:70px;resize:vertical}
 </section>
 </main>
 <nav class="tabs">
- <button class="active" id="tab-home" onclick="showPage('home')">Översikt</button>
- <button id="tab-plan" onclick="showPage('plan')">Träningsplan</button>
- <button id="tab-recovery" onclick="showPage('recovery')">Återhämtning</button>
+  <button class="active" id="tab-home" onclick="showPage('home')">Översikt</button>
+  <button id="tab-plan" onclick="showPage('plan')">Träningsplan</button>
+  <button id="tab-coach" onclick="showPage('coach')">AI-coach</button>
+  <button id="tab-recovery" onclick="showPage('recovery')">Återhämtning</button>
 </nav>
 <div class="footer">RunBalance · Träna långsiktigt och lyssna på kroppen.</div>
 <div class="route-modal" id="routeModal" role="dialog" aria-modal="true" aria-labelledby="routeTitle" onclick="if(event.target===this)closeRoute()">
@@ -355,6 +393,90 @@ async function openAnalysis(id,name){
   $('analysisContent').innerHTML=`<div class="notice danger">${esc(e.message||'Kunde inte hämta passanalysen.')}</div><p class="muted">Kontrollera att Cloudflare Worker har den nya analys-endpointen publicerad och att Strava-anslutningen har åtkomst till pulsströmmar.</p>`;
  }
 }
+
+async function loadEnduranceCoach() {
+  const button = document.getElementById("coachRefresh");
+  const status = document.getElementById("coachStatus");
+  const results = document.getElementById("coachResults");
+
+  button.disabled = true;
+  button.textContent = "Analyserar träningen…";
+  status.textContent = "Hämtar träningshistorik och kontaktar Gemini…";
+
+  results.innerHTML = `
+    <div class="card">
+      <p class="muted">Din träningsanalys laddas. Vänta lite…</p>
+    </div>
+  `;
+
+  try {
+    const response = await fetch(
+      "https://runbalance-api.eliasyacoub78.workers.dev/coach/endurance"
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || `Förfrågan misslyckades (${response.status})`
+      );
+    }
+
+    const list = items => {
+      if (!Array.isArray(items) || items.length === 0) {
+        return "<p class='muted'>Inga tydliga punkter att visa ännu.</p>";
+      }
+
+      return `<ul class="analysis-list">${
+        items.map(item => `<li>${esc(item)}</li>`).join("")
+      }</ul>`;
+    };
+
+    results.innerHTML = `
+      <div class="card">
+        <div class="section-kicker">Din analys</div>
+        <h2>${esc(data.title || "Din träningsanalys")}</h2>
+        <p>${esc(data.summary || "Ingen sammanfattning tillgänglig.")}</p>
+      </div>
+
+      <div class="card">
+        <h2>Det här går bra</h2>
+        ${list(data.strengths)}
+      </div>
+
+      <div class="card">
+        <h2>Att tänka på</h2>
+        ${list(data.concerns)}
+      </div>
+
+      <div class="card">
+        <h2>Förslag för nästa vecka</h2>
+        ${list(data.recommendations)}
+      </div>
+
+      <div class="card">
+        <h2>Begränsningar i underlaget</h2>
+        ${list(data.dataLimitations)}
+      </div>
+    `;
+
+    status.textContent = "Analysen är uppdaterad.";
+  } catch (error) {
+    results.innerHTML = `
+      <div class="card notice danger">
+        <h3>Analysen kunde inte laddas</h3>
+        <p>${esc(error.message || "Ett okänt fel inträffade.")}</p>
+        <p>Försök igen senare. Om felet kvarstår behöver vi kontrollera Worker-loggarna.</p>
+      </div>
+    `;
+
+    status.textContent = "Det gick inte att hämta analysen.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Uppdatera träningsanalys";
+  }
+}
+
 function renderRecovery(){
  const data=read('rb_recovery');
  $('metricKnee').textContent=data.length?data[0].kneeToday:'Ej loggad';
