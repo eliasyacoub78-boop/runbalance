@@ -292,25 +292,14 @@ function renderWeeklyPlan(){
  const week=Number($('weekSelect').value);
  let done={};
  try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}
- const cycleStats=readCycleStats();
  const sessions=weeklyPlans[week],prefix='w'+week+'-';
+ if(!Array.isArray(sessions)){
+  $('weeklySessions').innerHTML='<p class="muted">Träningspassen kunde inte laddas. Välj en träningsvecka igen.</p>';
+  return;
+ }
  $('weeklySessions').innerHTML=sessions.map((s,i)=>{
   const id=prefix+i;
-  const isCycling=/cykling/i.test(s[1]+' '+s[2]);
-  const stats=cycleStats[id]||{};
-  const cyclingFields=isCycling?`
-   <div class="grid" style="margin-top:10px">
-    <div>
-     <label for="cycleDistance-${id}">Distans (km)</label>
-     <input id="cycleDistance-${id}" type="number" min="0" max="1000" step="0.01" inputmode="decimal" placeholder="t.ex. 25" value="${esc(stats.distance||'')}" onchange="saveCycleStat('${id}','distance',this.value)">
-    </div>
-    <div>
-     <label for="cycleWatts-${id}">Genomsnittlig effekt (W)</label>
-     <input id="cycleWatts-${id}" type="number" min="0" max="2500" step="1" inputmode="numeric" placeholder="t.ex. 150" value="${esc(stats.watts||'')}" onchange="saveCycleStat('${id}','watts',this.value)">
-    </div>
-   </div>
-   <p class="muted" style="margin-top:4px">Uppgifterna sparas automatiskt på den här enheten.</p>`:'';
-  return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p>${cyclingFields}<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`;
+  return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`;
  }).join('');
  const completed=sessions.filter((s,i)=>done[prefix+i]).length;
  $('weeklyProgress').textContent=`Vecka ${week+1}: ${completed} av ${sessions.length} dagar avklarade`;
