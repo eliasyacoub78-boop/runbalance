@@ -243,18 +243,10 @@ function renderStravaPage(){
   const rawDate=x.start_date||x.start_date_local||x.date;
   const date=rawDate?new Date(rawDate).toLocaleDateString('sv-SE'):'Okänt datum';
   const km=(Number(x.distance_m??x.distance??0)||0)/1000;
-  const movingSeconds=Number(x.moving_time_s??x.moving_time??0)||0;
-  const mins=Math.floor(movingSeconds/60);
+  const mins=Math.floor((Number(x.moving_time_s??x.moving_time??0)||0)/60);
   const duration=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
   const activityId=x.activity_id||x.id;
-  const sport=String(x.sport_type||x.type||x.name||'');
-  const isCycling=/ride|cycling|cykl|bike|bicycle/i.test(sport);
-  const speedKmh=Number(x.average_speed_kmh??x.average_speed??0)>0
-    ? (Number(x.average_speed_kmh??x.average_speed)*(x.average_speed_kmh!==undefined?1:3.6))
-    : (movingSeconds>0 ? km/(movingSeconds/3600) : 0);
-  const watts=Number(x.average_watts??x.avg_watts??x.average_power??0)||0;
-  const cyclingDetails=isCycling?`<p>${watts>0?`Snitteffekt: ${Math.round(watts)} W · `:''}Snittfart: ${speedKmh>0?speedKmh.toFixed(1)+' km/h':'–'}</p>`:'';
-  return `<div class="logitem"><strong>${esc(date)} · ${esc(x.name||x.sport_type||x.type||'Strava-pass')}</strong><p>${km.toFixed(2)} km · ${duration}</p>${cyclingDetails}${activityId?`<div class="activity-actions"><button class="secondary route-button" onclick="openAnalysis('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Analysera pass</button><button class="secondary route-button" onclick="openRoute('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Visa GPS-rutt</button></div>`:'<p class="muted">Aktivitets-ID saknas.</p>'}</div>`;
+  return `<div class="logitem"><strong>${esc(date)} · ${esc(x.name||x.sport_type||x.type||'Strava-pass')}</strong><p>${km.toFixed(2)} km · ${duration}</p>${activityId?`<div class="activity-actions"><button class="secondary route-button" onclick="openAnalysis('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Analysera pass</button><button class="secondary route-button" onclick="openRoute('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Visa GPS-rutt</button></div>`:'<p class="muted">Aktivitets-ID saknas.</p>'}</div>`;
  }).join(''):'<p class="muted">Inga Strava-pass hittades.</p>';
  const controls=`<button class="secondary" ${stravaCurrentPage<=1?'disabled style="opacity:.45;cursor:not-allowed"':''} onclick="changeStravaPage(-1)">Föregående</button><span class="muted" style="align-self:center">Sida ${stravaCurrentPage} av ${totalPages}</span><button class="secondary" ${stravaCurrentPage>=totalPages?'disabled style="opacity:.45;cursor:not-allowed"':''} onclick="changeStravaPage(1)">Nästa</button>`;
  ['stravaPaginationTop','stravaPaginationBottom'].forEach(id=>{const node=$(id);if(node)node.innerHTML=stravaActivitiesCache.length>STRAVA_PAGE_SIZE?controls:'';});
@@ -317,16 +309,12 @@ function renderWeeklyPlan(){
   const cyclingFields=isCycling?`
    <div class="grid" style="margin-top:10px">
     <div>
-     <label for="cycleDistance-${id}">Distans (km) – ange själv</label>
+     <label for="cycleDistance-${id}">Distans (km)</label>
      <input id="cycleDistance-${id}" type="number" min="0" max="1000" step="0.01" inputmode="decimal" placeholder="t.ex. 25" value="${esc(stats.distance||'')}" onchange="saveCycleStat('${id}','distance',this.value)">
     </div>
     <div>
-     <label for="cycleWatts-${id}">Snitt watt (W) – ange själv</label>
+     <label for="cycleWatts-${id}">Genomsnittlig effekt (W)</label>
      <input id="cycleWatts-${id}" type="number" min="0" max="2500" step="1" inputmode="numeric" placeholder="t.ex. 150" value="${esc(stats.watts||'')}" onchange="saveCycleStat('${id}','watts',this.value)">
-    </div>
-    <div>
-     <label for="cycleSpeed-${id}">Snittfart (km/h)</label>
-     <input id="cycleSpeed-${id}" type="number" min="0" max="150" step="0.1" inputmode="decimal" placeholder="t.ex. 24,5" value="${esc(stats.speed||'')}" onchange="saveCycleStat('${id}','speed',this.value)">
     </div>
    </div>
    <p class="muted" style="margin-top:4px">Uppgifterna sparas automatiskt på den här enheten.</p>`:'';
@@ -444,8 +432,15 @@ async function openAnalysis(id,name){
    '<h3 style="margin-top:18px">Det här gick bra</h3>'+listHtml(evaluation.good,'Det finns inte tillräckligt med data för att säkert lyfta fram något särskilt.')+
    '<h3>Att tänka på</h3>'+listHtml(evaluation.consider,'Det finns inga tydliga förbättringspunkter som kan fastställas från tillgängliga data.')+
    `<p class="muted">${esc(data.analysis_note||'Bedömningen baseras bara på data som finns tillgängliga för aktiviteten. Den är vägledning, inte en medicinsk bedömning.')}</p>`+
-   `<div style="margin-top:20px">
-     <button id="specificCoachButton" class="primary" onclick="loadSpecificActivityCoach('${encodeURIComponent(id)}')">Analysera passet med Gemini</button>
+   `<div class="card" style="margin-top:20px">
+     <h3>Komplettera passet</h3>
+     <p class="muted">För inomhuscykling fyller du i distans och snitt watt här. Snittfarten räknas automatiskt från distansen och tiden ${fmtDuration(moving)} som importerats från Strava.</p>
+     <div class="analysis-grid" style="margin-top:12px">
+       <div><label for="manualRideDistance">Distans (km)</label><input id="manualRideDistance" type="number" min="0" max="1000" step="0.01" placeholder="t.ex. 25" oninput="updateManualRideSpeed(${moving})"></div>
+       <div><label for="manualRideWatts">Snitt watt (W)</label><input id="manualRideWatts" type="number" min="0" max="2500" step="1" placeholder="t.ex. 150"></div>
+     </div>
+     <p id="manualRideSpeed" class="muted">Snittfart: ange distans för att räkna ut farten.</p>
+     <button id="specificCoachButton" class="primary" onclick="loadSpecificActivityCoach('${encodeURIComponent(id)}',${moving})">Analysera passet med Gemini</button>
      <div id="specificCoachResults"></div>
    </div>`;
  }catch(e){
@@ -454,7 +449,18 @@ async function openAnalysis(id,name){
  }
 }
 
-async function loadSpecificActivityCoach(activityId) {
+function updateManualRideSpeed(movingSeconds) {
+  const distance = Number(document.getElementById("manualRideDistance")?.value || 0);
+  const output = document.getElementById("manualRideSpeed");
+  if (!output) return;
+  if (distance > 0 && movingSeconds > 0) {
+    output.textContent = `Beräknad snittfart: ${(distance / (movingSeconds / 3600)).toFixed(1)} km/h`;
+  } else {
+    output.textContent = "Snittfart: ange distans för att räkna ut farten.";
+  }
+}
+
+async function loadSpecificActivityCoach(activityId, movingSeconds) {
   const button = document.getElementById("specificCoachButton");
   const results = document.getElementById("specificCoachResults");
 
@@ -468,9 +474,31 @@ async function loadSpecificActivityCoach(activityId) {
   results.innerHTML = '<p class="muted">Analyserar passet. Vänta lite…</p>';
 
   try {
+    const manualDistanceKm = Number(document.getElementById("manualRideDistance")?.value || 0);
+    const manualAverageWatts = Number(document.getElementById("manualRideWatts")?.value || 0);
+    const manualAverageSpeedKmh = movingSeconds > 0 && manualDistanceKm > 0
+      ? manualDistanceKm / (movingSeconds / 3600)
+      : 0;
+    if (manualDistanceKm <= 0) {
+      throw new Error("Fyll i distansen i km innan du startar AI-analysen.");
+    }
+    if (manualAverageWatts <= 0) {
+      throw new Error("Fyll i snitt watt innan du startar AI-analysen.");
+    }
+
     const response = await fetch(
       "https://runbalance-api.eliasyacoub78.workers.dev/coach/activity/" +
-      encodeURIComponent(activityId)
+      encodeURIComponent(activityId),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          manualDistanceKm,
+          manualAverageWatts,
+          manualAverageSpeedKmh,
+          movingTimeSeconds: movingSeconds
+        })
+      }
     );
 
     const data = await response.json();
