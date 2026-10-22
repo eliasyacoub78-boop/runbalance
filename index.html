@@ -267,14 +267,37 @@ const weeklyPlans = [
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lugnt","30–40 minuter lätt cykling, utan hårda intervaller."],["Torsdag","Tempointervaller","3 × 6 minuter kontrollerat tempo, 2 minuter lugnt mellan."],["Fredag","Lätt styrka","10–15 minuter."],["Lördag","Återhämtning","3 km lugnt eller vila om du behöver."],["Söndag","Lugn löpning","5 km lugnt. Spara kraft inför sista veckan."]],
 [["Måndag","Vila och återhämtning","Hel vilodag."],["Tisdag","Lugn löpning","4 km + 4 stegringslopp."],["Onsdag","Cykling – lätt","20–30 minuter mycket lätt cykling, eller vila."],["Torsdag","Korta intervaller","4 × 1 minut snabbt men kontrollerat, 2 minuter lugnt mellan."],["Fredag","Vila","Ingen styrketräning. Prioritera sömn och återhämtning."],["Lördag","Lätt jogg","15–20 minuter mycket lugnt, eller vila."],["Söndag","5 km-test","Värm upp 10–15 minuter, spring 5 km och börja kontrollerat. Avsluta med lugn jogg eller gång."]]
 ];
+function readCycleStats(){
+ try{return JSON.parse(localStorage.getItem('rb_cycle_stats')||'{}')}catch(e){return {}}
+}
+function saveCycleStat(id,field,value){
+ const data=readCycleStats();
+ data[id]={...(data[id]||{}),[field]:value};
+ localStorage.setItem('rb_cycle_stats',JSON.stringify(data));
+}
 function renderWeeklyPlan(){
  const week=Number($('weekSelect').value);
  let done={};
  try{done=JSON.parse(localStorage.getItem('rb_weekly_done')||'{}')}catch(e){}
+ const cycleStats=readCycleStats();
  const sessions=weeklyPlans[week],prefix='w'+week+'-';
  $('weeklySessions').innerHTML=sessions.map((s,i)=>{
   const id=prefix+i;
-  return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`;
+  const isCycling=/cykling/i.test(s[1]+' '+s[2]);
+  const stats=cycleStats[id]||{};
+  const cyclingFields=isCycling?`
+   <div class="grid" style="margin-top:10px">
+    <div>
+     <label for="cycleDistance-${id}">Distans (km)</label>
+     <input id="cycleDistance-${id}" type="number" min="0" max="1000" step="0.01" inputmode="decimal" placeholder="t.ex. 25" value="${esc(stats.distance||'')}" onchange="saveCycleStat('${id}','distance',this.value)">
+    </div>
+    <div>
+     <label for="cycleWatts-${id}">Genomsnittlig effekt (W)</label>
+     <input id="cycleWatts-${id}" type="number" min="0" max="2500" step="1" inputmode="numeric" placeholder="t.ex. 150" value="${esc(stats.watts||'')}" onchange="saveCycleStat('${id}','watts',this.value)">
+    </div>
+   </div>
+   <p class="muted" style="margin-top:4px">Uppgifterna sparas automatiskt på den här enheten.</p>`:'';
+  return `<div class="session"><div style="flex:1"><h3>${esc(s[0])} · ${esc(s[1])}</h3><p>${esc(s[2])}</p>${cyclingFields}<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto" ${done[id]?'checked':''} onchange="toggleWeeklyDone('${id}',this.checked)">Pass genomfört</label></div></div>`;
  }).join('');
  const completed=sessions.filter((s,i)=>done[prefix+i]).length;
  $('weeklyProgress').textContent=`Vecka ${week+1}: ${completed} av ${sessions.length} dagar avklarade`;
