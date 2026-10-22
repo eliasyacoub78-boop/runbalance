@@ -128,7 +128,7 @@ textarea{min-height:70px;resize:vertical}
   <p class="muted">Alla åtta veckor, löppass, cykling och återhämtning finns samlade på ett ställe.</p>
   <button onclick="showPage('plan')" style="width:100%">Öppna mitt 8-veckorsprogram →</button>
  </div>
- <div class="card"><h2>Din löpning från Strava</h2><p class="muted">Dina senaste aktiviteter. Tryck på en aktivitet för att visa GPS-rutten på karta.</p><div id="stravaStatus" class="muted"></div><div id="stravaLogs"><p class="muted">Hämtar Strava-pass…</p></div><button class="secondary" onclick="renderStravaLogs()">Uppdatera Strava-pass</button></div>
+ <div class="card"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><h2>Din löpning från Strava</h2><p class="muted">Dina senaste aktiviteter. Tryck på en aktivitet för att visa GPS-rutten på karta.</p></div><button class="secondary" onclick="renderStravaLogs()">Uppdatera Strava-pass</button></div><div id="stravaStatus" class="muted"></div><div id="stravaPaginationTop" class="row" style="align-items:center;justify-content:space-between;margin:10px 0"></div><div id="stravaLogs"><p class="muted">Hämtar Strava-pass…</p></div><div id="stravaPaginationBottom" class="row" style="align-items:center;justify-content:space-between;margin-top:10px"></div></div>
 </section>
 <section id="plan" class="page">
  <div class="program-intro">
@@ -230,6 +230,33 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function read(key){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}}
 function write(key,data){localStorage.setItem(key,JSON.stringify(data))}
 function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===page));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.id==='tab-'+page));window.scrollTo({top:0,behavior:'smooth'});if(page==='recovery')renderRecovery();if(page==='home')renderStravaLogs()}
+let stravaActivitiesCache=[];
+let stravaCurrentPage=1;
+const STRAVA_PAGE_SIZE=10;
+function renderStravaPage(){
+ const el=$('stravaLogs');
+ const totalPages=Math.max(1,Math.ceil(stravaActivitiesCache.length/STRAVA_PAGE_SIZE));
+ stravaCurrentPage=Math.min(Math.max(1,stravaCurrentPage),totalPages);
+ const start=(stravaCurrentPage-1)*STRAVA_PAGE_SIZE;
+ const pageActivities=stravaActivitiesCache.slice(start,start+STRAVA_PAGE_SIZE);
+ el.innerHTML=pageActivities.length?pageActivities.map(x=>{
+  const rawDate=x.start_date||x.start_date_local||x.date;
+  const date=rawDate?new Date(rawDate).toLocaleDateString('sv-SE'):'Okänt datum';
+  const km=(Number(x.distance_m??x.distance??0)||0)/1000;
+  const mins=Math.floor((Number(x.moving_time_s??x.moving_time??0)||0)/60);
+  const duration=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
+  const activityId=x.activity_id||x.id;
+  return `<div class="logitem"><strong>${esc(date)} · ${esc(x.name||x.sport_type||x.type||'Strava-pass')}</strong><p>${km.toFixed(2)} km · ${duration}</p>${activityId?`<div class="activity-actions"><button class="secondary route-button" onclick="openAnalysis('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Analysera pass</button><button class="secondary route-button" onclick="openRoute('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Visa GPS-rutt</button></div>`:'<p class="muted">Aktivitets-ID saknas.</p>'}</div>`;
+ }).join(''):'<p class="muted">Inga Strava-pass hittades.</p>';
+ const controls=`<button class="secondary" ${stravaCurrentPage<=1?'disabled style="opacity:.45;cursor:not-allowed"':''} onclick="changeStravaPage(-1)">Föregående</button><span class="muted" style="align-self:center">Sida ${stravaCurrentPage} av ${totalPages}</span><button class="secondary" ${stravaCurrentPage>=totalPages?'disabled style="opacity:.45;cursor:not-allowed"':''} onclick="changeStravaPage(1)">Nästa</button>`;
+ ['stravaPaginationTop','stravaPaginationBottom'].forEach(id=>{const node=$(id);if(node)node.innerHTML=stravaActivitiesCache.length>STRAVA_PAGE_SIZE?controls:'';});
+}
+function changeStravaPage(delta){
+ stravaCurrentPage+=delta;
+ renderStravaPage();
+ const list=$('stravaLogs');
+ if(list)list.scrollIntoView({behavior:'smooth',block:'start'});
+}
 async function renderStravaLogs(){
  const el=$('stravaLogs'),status=$('stravaStatus');
  if(!el)return;
@@ -239,22 +266,16 @@ async function renderStravaLogs(){
   const response=await fetch('https://runbalance-api.eliasyacoub78.workers.dev/strava/activities');
   if(!response.ok)throw new Error('HTTP '+response.status);
   const data=await response.json();
-  const activities=Array.isArray(data)?data:(data.activities||data.data||[]);
-  if(status)status.textContent=activities.length?activities.length+' aktiviteter hämtade.':'Inga aktiviteter hittades.';
-  if($('stravaCount'))$('stravaCount').textContent=String(activities.length);
-  el.innerHTML=activities.length?activities.map(x=>{
-   const rawDate=x.start_date||x.start_date_local||x.date;
-   const date=rawDate?new Date(rawDate).toLocaleDateString('sv-SE'):'Okänt datum';
-   const km=(Number(x.distance_m??x.distance??0)||0)/1000;
-   const mins=Math.floor((Number(x.moving_time_s??x.moving_time??0)||0)/60);
-   const duration=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
-   const activityId=x.activity_id||x.id;
-   return `<div class="logitem"><strong>${esc(date)} · ${esc(x.name||x.sport_type||x.type||'Strava-pass')}</strong><p>${km.toFixed(2)} km · ${duration}</p>${activityId?`<div class="activity-actions"><button class="secondary route-button" onclick="openAnalysis('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Analysera pass</button><button class="secondary route-button" onclick="openRoute('${esc(activityId)}','${esc(x.name||'Strava-aktivitet')}')">Visa GPS-rutt</button></div>`:'<p class="muted">Aktivitets-ID saknas.</p>'}</div>`;
-  }).join(''):'<p class="muted">Inga Strava-pass hittades.</p>';
+  stravaActivitiesCache=Array.isArray(data)?data:(data.activities||data.data||[]);
+  stravaCurrentPage=1;
+  if(status)status.textContent=stravaActivitiesCache.length?stravaActivitiesCache.length+' aktiviteter hämtade. Visar högst 10 pass per sida.':'Inga aktiviteter hittades.';
+  if($('stravaCount'))$('stravaCount').textContent=String(stravaActivitiesCache.length);
+  renderStravaPage();
  }catch(e){
   if(status)status.textContent='Kunde inte hämta Strava-pass.';
   if($('stravaCount'))$('stravaCount').textContent='—';
   el.innerHTML='<p class="muted">Kontrollera att Cloudflare Worker är publicerad och att /strava/activities tillåter GitHub Pages-adressen.</p>';
+  ['stravaPaginationTop','stravaPaginationBottom'].forEach(id=>{if($(id))$(id).innerHTML='';});
  }
 }
 const weeklyPlans = [
