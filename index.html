@@ -300,7 +300,14 @@ async function renderGarminLogs(){
   const response=await fetch('https://runbalance-api.eliasyacoub78.workers.dev/garmin/activities');
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error||('HTTP '+response.status));
-  const activities=Array.isArray(data)?data:(data.activities||data.data||data.results||[]);
+  const allActivities=Array.isArray(data)?data:(data.activities||data.data||data.results||[]);
+  // Visa endast löpning och cykling, och filtrera bort övriga Garmin-aktiviteter.
+  const activities=allActivities.filter(x=>{
+   const type=String(x.activityType?.typeKey||x.activityType?.typeName||x.activityType||x.sport_type||x.type||'').toLowerCase();
+   const name=String(x.activityName||x.name||'').toLowerCase();
+   const label=type+' '+name;
+   return /run|running|trail_running|treadmill_running|virtual_run|löp|lopning|löppass|cykl|cycling|biking|bike|bicycl|ride|indoor_cycling|virtual_ride/.test(label);
+  });
   if($('garminCount'))$('garminCount').textContent=String(activities.length);
   if(!activities.length){
    if(status)status.textContent='Inga Garmin-aktiviteter hittades.';
